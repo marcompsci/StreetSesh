@@ -1,10 +1,3 @@
-//
-//  StreetSeshApp.swift
-//  StreetSesh
-//
-//  Created by Omari Bell on 9/22/26.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -12,12 +5,19 @@ import SwiftData
 struct StreetSeshApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Spot.self,
+            LiveSession.self,
+            AppUser.self,
+            HuntScore.self,
+            Crew.self,
+            SpotCheckIn.self,
+            Trophy.self,
+            SpotClip.self,
+            BustVote.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, configurations: [config])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -26,6 +26,7 @@ struct StreetSeshApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .preferredColorScheme(.dark)
         }
         .modelContainer(sharedModelContainer)
     }
