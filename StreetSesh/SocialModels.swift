@@ -88,39 +88,33 @@ enum TrophyRarity: String, CaseIterable {
 // MARK: - Trophy Engine
 
 enum TrophyEngine {
+    @discardableResult
     static func checkAndAward(
         username: String,
         newCheckIn: SpotCheckIn,
         allCheckIns: [SpotCheckIn],
         existingTrophies: [Trophy],
         context: ModelContext
-    ) {
+    ) -> [Trophy] {
         let myCheckIns = allCheckIns.filter { $0.username == username }
         let myKeys = Set(existingTrophies.filter { $0.username == username }.map { $0.key })
+        var awarded: [Trophy] = []
+
+        func award(_ trophy: Trophy) {
+            context.insert(trophy)
+            awarded.append(trophy)
+        }
 
         // First Drop — first session ever
         if myCheckIns.count == 1, !myKeys.contains("first_drop") {
-            context.insert(Trophy(
-                key: "first_drop",
-                name: "First Drop",
-                icon: "skateboard",
-                rarity: .common,
-                username: username
-            ))
+            award(Trophy(key: "first_drop", name: "First Drop", icon: "skateboard", rarity: .common, username: username))
         }
 
         // Legendary spot trophy — first visit to any legendary spot
         if newCheckIn.fameTier == .legendary {
             let key = "legendary_\(newCheckIn.spotName)"
             if !myKeys.contains(key) {
-                context.insert(Trophy(
-                    key: key,
-                    name: newCheckIn.spotName,
-                    icon: "star.fill",
-                    rarity: .legendary,
-                    username: username,
-                    spotName: newCheckIn.spotName
-                ))
+                award(Trophy(key: key, name: newCheckIn.spotName, icon: "star.fill", rarity: .legendary, username: username, spotName: newCheckIn.spotName))
             }
         }
 
@@ -128,38 +122,21 @@ enum TrophyEngine {
         if newCheckIn.fameTier == .iconic {
             let key = "iconic_\(newCheckIn.spotName)"
             if !myKeys.contains(key) {
-                context.insert(Trophy(
-                    key: key,
-                    name: newCheckIn.spotName,
-                    icon: "mappin.and.ellipse.fill",
-                    rarity: .rare,
-                    username: username,
-                    spotName: newCheckIn.spotName
-                ))
+                award(Trophy(key: key, name: newCheckIn.spotName, icon: "mappin.and.ellipse.fill", rarity: .rare, username: username, spotName: newCheckIn.spotName))
             }
         }
 
         // Spot Collector — 5+ unique spots visited
         let uniqueSpots = Set(myCheckIns.map { $0.spotName })
         if uniqueSpots.count >= 5, !myKeys.contains("spot_collector") {
-            context.insert(Trophy(
-                key: "spot_collector",
-                name: "Spot Collector",
-                icon: "map.fill",
-                rarity: .rare,
-                username: username
-            ))
+            award(Trophy(key: "spot_collector", name: "Spot Collector", icon: "map.fill", rarity: .rare, username: username))
         }
 
         // Regular — 10+ total sessions
         if myCheckIns.count >= 10, !myKeys.contains("regular") {
-            context.insert(Trophy(
-                key: "regular",
-                name: "Regular",
-                icon: "person.fill.checkmark",
-                rarity: .rare,
-                username: username
-            ))
+            award(Trophy(key: "regular", name: "Regular", icon: "person.fill.checkmark", rarity: .rare, username: username))
         }
+
+        return awarded
     }
 }

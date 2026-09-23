@@ -38,6 +38,15 @@ struct ContentView: View {
             SampleData.seedClips(into: modelContext)
             SampleData.seedBustVotes(into: modelContext)
         }
+        .task {
+            do {
+                try await SupabaseService.shared.syncSpots(into: modelContext)
+                try await SupabaseService.shared.syncActiveSessions(into: modelContext)
+                try await SupabaseService.shared.syncLeaderboard(into: modelContext)
+            } catch {
+                // Fall back to local sample data if Supabase is unreachable
+            }
+        }
     }
 }
 

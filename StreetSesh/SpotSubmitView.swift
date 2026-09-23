@@ -147,7 +147,7 @@ struct SpotSubmitView: View {
         let lat = locationManager.location?.coordinate.latitude  ?? 37.7749
         let lng = locationManager.location?.coordinate.longitude ?? -122.4194
 
-        modelContext.insert(Spot(
+        let spot = Spot(
             name: trimmedName,
             latitude: lat,
             longitude: lng,
@@ -156,7 +156,9 @@ struct SpotSubmitView: View {
             bustStatus: bustStatus,
             fameTier: fameTier,
             bestTimeOfDay: bestTime
-        ))
+        )
+        modelContext.insert(spot)
+        Task { try? await SupabaseService.shared.pushSpot(spot) }
         dismiss()
     }
 }

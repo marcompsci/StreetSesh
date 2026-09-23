@@ -86,5 +86,6 @@ struct OnboardingView: View {
             isUnder18: isUnder18
         )
         modelContext.insert(user)
+        Task { try? await SupabaseService.shared.upsertUser(user) }
     }
 }

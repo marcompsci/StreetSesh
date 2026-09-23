@@ -313,5 +313,7 @@ struct SpotDetailSheet: View {
             spot.bustStatusRaw = consensus.rawValue
             spot.bustConfidenceDate = Date()
         }
+
+        Task { try? await SupabaseService.shared.pushBustVote(newVote) }
     }
 }

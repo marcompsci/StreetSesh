@@ -78,7 +78,9 @@ struct AddClipView: View {
         let title = clipTitle.trimmingCharacters(in: .whitespaces).isEmpty
             ? url
             : clipTitle.trimmingCharacters(in: .whitespaces)
-        modelContext.insert(SpotClip(spotName: spotName, clipURL: url, title: title, addedBy: user.username))
+        let clip = SpotClip(spotName: spotName, clipURL: url, title: title, addedBy: user.username)
+        modelContext.insert(clip)
+        Task { try? await SupabaseService.shared.pushClip(clip) }
         dismiss()
     }
 }

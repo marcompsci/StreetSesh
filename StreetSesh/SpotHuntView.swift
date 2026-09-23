@@ -249,5 +249,6 @@ struct SpotHuntView: View {
             isCurrentUser: true
         )
         modelContext.insert(score)
+        Task { try? await SupabaseService.shared.pushHuntScore(score) }
     }
 }

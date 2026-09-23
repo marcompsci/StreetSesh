@@ -161,13 +161,22 @@ struct GoLiveView: View {
 
         let checkIn = SpotCheckIn(username: user.username, spotName: spot.name, fameTier: spot.fameTier)
         modelContext.insert(checkIn)
-        TrophyEngine.checkAndAward(
+        let newTrophies = TrophyEngine.checkAndAward(
             username: user.username,
             newCheckIn: checkIn,
             allCheckIns: allCheckIns + [checkIn],
             existingTrophies: allTrophies,
             context: modelContext
         )
+
+        Task {
+            try? await SupabaseService.shared.deactivateSessions(for: user.username)
+            try? await SupabaseService.shared.pushLiveSession(session)
+            try? await SupabaseService.shared.pushCheckIn(checkIn)
+            for trophy in newTrophies {
+                try? await SupabaseService.shared.pushTrophy(trophy)
+            }
+        }
 
         dismiss()
     }
