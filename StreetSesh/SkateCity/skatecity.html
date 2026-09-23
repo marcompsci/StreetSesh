@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SkateCity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Manrope:wght@500;600;700;800&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #1d2433; --ink-2: #5a6272; --ink-3: #8d93a0;
+    --glass: rgba(255, 255, 255, 0.84); --glass-line: rgba(29, 36, 51, 0.08);
+    --coral: #ff4f6d; --route: #2f7bff; --zipp: #17b3a3; --gold: #ffb020; --land: #f1eee8;
+    --good: #16a36a; --bad: #e5484d;
+    --display: 'Dela Gothic One', 'Arial Black', Impact, sans-serif;
+    --ui: 'Manrope', ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --shadow: 0 8px 28px rgba(29, 36, 51, 0.14), 0 1px 3px rgba(29, 36, 51, 0.08);
+    --r: 16px;
+    --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: #e3ebf1; color: var(--ink); font-family: var(--ui); overflow: hidden; -webkit-user-select: none; user-select: none; touch-action: none; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+  .glass { background: var(--glass); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); border: 1px solid var(--glass-line); box-shadow: var(--shadow); }
+  kbd { font-family: var(--ui); font-weight: 800; font-size: 11px; min-width: 22px; height: 22px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 7px; background: var(--ink); color: #fff; box-sizing: border-box; }
+  button { font-family: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--route); outline-offset: 2px; }
+  #intro { position: fixed; inset: 0; display: flex; align-items: center; padding: calc(24px + var(--safe-t)) 24px calc(24px + var(--safe-b)); pointer-events: none; background: linear-gradient(90deg, rgba(241, 238, 232, 0.92) 0%, rgba(241, 238, 232, 0.55) 38%, rgba(241, 238, 232, 0) 62%); }
+  #onboard { pointer-events: auto; width: min(400px, 100%); padding: 26px 24px 22px; border-radius: 24px; display: grid; gap: 18px; }
+  .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); display: flex; align-items: center; gap: 8px; }
+  .eyebrow b { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 4px rgba(255, 79, 109, 0.18); }
+  .logo { font-family: var(--display); font-size: clamp(40px, 9vw, 54px); line-height: 0.9; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+  .logo span { color: var(--coral); }
+  .lede { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; max-width: 34ch; }
+  .field { display: grid; gap: 8px; }
+  .field > label, .field > .lbl { font-size: 12px; font-weight: 700; color: var(--ink-2); letter-spacing: 0.04em; }
+  .handle { display: flex; align-items: center; background: #fff; border: 1.5px solid var(--glass-line); border-radius: 12px; padding: 0 12px; }
+  .handle span { color: var(--ink-3); font-weight: 700; }
+  .handle input { flex: 1; border: 0; background: transparent; font: 700 16px var(--ui); color: var(--ink); padding: 12px 4px; min-width: 0; outline: none; }
+  .handle:focus-within { border-color: var(--route); }
+  .sw { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sw button { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1.5px var(--glass-line); padding: 0; transition: transform .15s; }
+  .sw button.sel { box-shadow: 0 0 0 2.5px var(--ink); transform: scale(1.08); }
+  #go { font: 800 16px var(--ui); color: #fff; background: var(--ink); border: 0; border-radius: 14px; padding: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  #go:disabled { opacity: 0.5; cursor: progress; }
+  #go:not(:disabled):hover { background: #000; }
+  .fine { font-size: 12px; color: var(--ink-3); margin: -6px 0 0; line-height: 1.45; }
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #hud > * { pointer-events: auto; }
+  .top-left { position: absolute; top: calc(14px + var(--safe-t)); left: 16px; display: grid; gap: 10px; width: min(300px, calc(100vw - 220px)); }
+  .profile { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; border-radius: 999px; width: max-content; max-width: 100%; }
+  #avatar-chip { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; flex: none; }
+  #uname { font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat { display: flex; align-items: center; gap: 5px; font-weight: 800; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .coin { width: 16px; height: 16px; border-radius: 50%; background: var(--gold); box-shadow: inset 0 0 0 3px #ffd36e; }
+  #heat { display: flex; gap: 2px; }
+  #heat i { width: 12px; height: 16px; background: #d8dbe0; clip-path: path('M6 0 C8 4 12 6 12 10.5 C12 14 9.3 16 6 16 C2.7 16 0 14 0 10.5 C0 8 2 6.5 3 5 C3.4 7 4.6 7.6 5.2 7.6 C5.2 5 4 2.5 6 0Z'); transition: background .3s; }
+  #heat i.on { background: linear-gradient(#ffb020, #ff4f2d); }
+  .mission { border-radius: var(--r); padding: 12px 14px; display: grid; gap: 4px; }
+  .mission .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  #m-step { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: var(--ink-3); }
+  #m-title { font-family: var(--display); font-size: 17px; font-weight: 400; margin: 0; }
+  #m-desc { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+  .mission .foot { display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 12px; font-weight: 700; }
+  #m-prog { color: var(--route); font-variant-numeric: tabular-nums; }
+  #m-reward { color: #b77900; }
+  #m-skip { margin-left: auto; background: none; border: 0; color: var(--ink-3); font-weight: 700; font-size: 12px; padding: 2px 0; }
+  #m-skip:hover { color: var(--ink); }
+  .top-right { position: absolute; top: calc(14px + var(--safe-t)); right: 16px; display: grid; justify-items: end; gap: 8px; }
+  .mapwrap { position: relative; width: 168px; height: 168px; border-radius: 50%; padding: 4px; }
+  #minimap { width: 100%; height: 100%; border-radius: 50%; display: block; }
+  #compass { position: absolute; inset: 0; pointer-events: none; }
+  #compass b { position: absolute; left: 50%; top: -2px; transform: translateX(-50%); font-size: 10px; font-weight: 800; background: var(--ink); color: #fff; border-radius: 6px; padding: 1px 5px; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: 340px; }
+  .tools button { height: 36px; min-width: 36px; padding: 0 12px; border-radius: 999px; font-weight: 800; font-size: 13px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+  #radio-btn.off { color: var(--ink-3); text-decoration: line-through; }
+  .scorecard { border-radius: 14px; padding: 8px 12px; text-align: right; }
+  .scorecard small { display: block; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; color: var(--ink-3); }
+  #score { font-family: var(--display); font-size: 20px; font-variant-numeric: tabular-nums; }
+  #feed { position: absolute; top: calc(14px + var(--safe-t)); left: 50%; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(360px, calc(100vw - 520px)); }
+  .feed-item { font-size: 12.5px; font-weight: 700; padding: 6px 12px 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.78); box-shadow: 0 2px 10px rgba(29,36,51,0.1); display: flex; gap: 8px; align-items: center; transition: opacity .6s; white-space: nowrap; }
+  .feed-item::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #5b6cff; }
+  .feed-item.fade { opacity: 0; }
+  .bottom-left { position: absolute; left: 16px; bottom: calc(16px + var(--safe-b)); border-radius: var(--r); padding: 10px 14px; display: flex; align-items: center; gap: 14px; }
+  #speed { font-family: var(--display); font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; min-width: 2ch; }
+  .speed small { font-size: 10px; font-weight: 800; letter-spacing: 0.1em; color: var(--ink-3); display: block; }
+  #mode { font-weight: 800; font-size: 13px; }
+  .popbar { width: 90px; height: 5px; border-radius: 3px; background: rgba(29,36,51,0.1); overflow: hidden; margin-top: 5px; }
+  #pop { height: 100%; background: var(--coral); transform-origin: left; transform: scaleX(0); }
+  #prompt { position: absolute; right: 16px; bottom: calc(16px + var(--safe-b)); display: grid; gap: 8px; justify-items: end; pointer-events: none; }
+  .pill { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border-radius: 999px; background: var(--glass); box-shadow: var(--shadow); font-weight: 700; font-size: 13.5px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  #combo { position: absolute; left: 50%; bottom: calc(118px + var(--safe-b)); transform: translate(-50%, 8px); text-align: center; opacity: 0; transition: opacity .15s, transform .15s; pointer-events: none; width: min(640px, 92vw); }
+  #combo.show { opacity: 1; transform: translate(-50%, 0); }
+  #combo .parts { font-weight: 800; font-size: 15px; color: var(--ink); text-shadow: 0 1px 0 #fff, 0 0 12px rgba(255,255,255,0.9); text-wrap: balance; }
+  #combo .total { font-family: var(--display); font-size: 34px; color: var(--ink); text-shadow: 0 2px 0 #fff, 0 0 18px rgba(255,255,255,0.8); font-variant-numeric: tabular-nums; }
+  #combo .total span { color: var(--coral); }
+  #landed { position: absolute; left: 50%; bottom: calc(190px + var(--safe-b)); transform: translateX(-50%) scale(0.8); font-family: var(--display); font-size: 44px; color: var(--good); opacity: 0; pointer-events: none; text-shadow: 0 3px 0 #fff; transition: opacity .2s, transform .3s cubic-bezier(.2,1.6,.4,1); }
+  #landed.show { opacity: 1; transform: translateX(-50%) scale(1); }
+  #banner { position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%) scale(0.9); font-family: var(--display); font-size: clamp(30px, 7vw, 56px); opacity: 0; pointer-events: none; letter-spacing: 0.01em; transition: opacity .2s, transform .25s; white-space: nowrap; text-shadow: 0 3px 0 #fff, 0 0 24px rgba(255,255,255,0.9); }
+  #banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #banner.bad { color: var(--bad); } #banner.good { color: var(--good); }
+  #balance { position: absolute; left: 50%; bottom: calc(96px + var(--safe-b)); width: 220px; height: 12px; transform: translateX(-50%); border-radius: 6px; background: linear-gradient(90deg, #e5484d 0 12%, #ffb020 12% 28%, #16a36a 28% 72%, #ffb020 72% 88%, #e5484d 88%); opacity: 0; transition: opacity .15s; pointer-events: none; box-shadow: 0 0 0 3px #fff, var(--shadow); }
+  #balance.show { opacity: 1; }
+  #needle { position: absolute; top: -5px; width: 4px; height: 22px; margin-left: -2px; background: var(--ink); border-radius: 2px; box-shadow: 0 0 0 2px #fff; }
+  #needle.warn { background: var(--bad); }
+  #toasts { position: absolute; left: 50%; bottom: calc(24px + var(--safe-b)); transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(420px, 90vw); }
+  .toast { background: var(--ink); color: #fff; padding: 9px 16px; border-radius: 12px; font-weight: 700; font-size: 13.5px; box-shadow: var(--shadow); transition: opacity .5s, transform .5s; text-align: center; }
+  .toast.good { background: var(--good); } .toast.bad { background: #b93a3e; }
+  .toast.out { opacity: 0; transform: translateY(6px); }
+  #rideinfo { position: absolute; top: calc(70px + var(--safe-t)); left: 50%; transform: translateX(-50%); background: #1d2433; color: #ffd166; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 13px; box-shadow: var(--shadow); }
+  #help { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(29,36,51,0.28); padding: 16px; z-index: 5; }
+  .sheet { width: min(760px, 100%); max-height: calc(100% - 32px); overflow: auto; border-radius: 22px; padding: 22px 24px; background: #fff; box-shadow: var(--shadow); }
+  .sheet header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .sheet h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; }
+  .sheet .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px 26px; }
+  .sheet h3 { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; }
+  .sheet dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 10px; font-size: 13px; align-items: center; }
+  .sheet dt { display: flex; gap: 3px; } .sheet dd { margin: 0; color: var(--ink-2); }
+  #help-close { border: 0; background: #f0f1f3; border-radius: 999px; padding: 8px 14px; font-weight: 800; }
+  .touchpad { display: none; }
+  body.touch .touchpad { display: block; }
+  body.touch .bottom-left { bottom: auto; top: calc(14px + var(--safe-t)); left: auto; right: 196px; padding: 8px 12px; }
+  body.touch .bottom-left .popbar, body.touch #mode { display: none; }
+  body.touch #prompt { bottom: calc(250px + var(--safe-b)); }
+  body.touch #feed { display: none; }
+  #stick { position: absolute; left: 22px; bottom: calc(26px + var(--safe-b)); width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.45); border: 2px solid rgba(255,255,255,0.8); touch-action: none; }
+  #knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px; border-radius: 50%; background: var(--ink); opacity: 0.85; }
+  .pads { position: absolute; right: 16px; bottom: calc(20px + var(--safe-b)); display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 58px) 46px; gap: 6px; }
+  .pads button { border: 0; border-radius: 16px; background: rgba(255,255,255,0.78); color: var(--ink); font-weight: 800; font-size: 12px; box-shadow: var(--shadow); touch-action: none; }
+  .pads button.down { background: var(--ink); color: #fff; }
+  .pads .ollie { grid-column: 3; grid-row: 3; background: var(--coral); color: #fff; border-radius: 50%; }
+  .pads .small { font-size: 11px; }
+  @media (max-width: 720px) {
+    #intro { align-items: flex-end; background: linear-gradient(0deg, rgba(241,238,232,0.95) 0%, rgba(241,238,232,0.4) 60%, rgba(241,238,232,0) 80%); padding-inline: 16px; }
+    #onboard { gap: 14px; padding: 20px 18px; }
+    .mapwrap { width: 124px; height: 124px; }
+    .top-left { width: calc(100vw - 172px); }
+    .mission #m-desc { font-size: 12px; }
+    body.touch .bottom-left { right: 150px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<canvas id="game" tabindex="0" aria-label="SkateCity 3D world"></canvas>
+
+<div id="intro">
+  <form id="onboard" class="glass" autocomplete="off">
+    <div class="eyebrow"><b></b>StreetSesh · live world</div>
+    <h1 class="logo">Skate<span>City</span></h1>
+    <p class="lede">An open city built for skating. Push through the streets, chain flip tricks and grinds, hail a ride, or grab whatever has wheels.</p>
+    <div class="field">
+      <label for="username">Username</label>
+      <div class="handle"><span>@</span><input id="username" maxlength="18" spellcheck="false" aria-label="Username"></div>
+    </div>
+    <div class="field"><span class="lbl">Skin tone</span><div class="sw" id="sw-skin"></div></div>
+    <div class="field"><span class="lbl">Hoodie</span><div class="sw" id="sw-hoodie"></div></div>
+    <div class="field"><span class="lbl">Deck</span><div class="sw" id="sw-deck"></div></div>
+    <button id="go" type="submit" disabled><span id="loading">Building the city…</span><span id="golabel" hidden>Drop in</span></button>
+    <p class="fine">Other skaters shown here are simulated for this preview. Sound starts when you drop in.</p>
+  </form>
+</div>
+
+<div id="hud" hidden>
+  <div class="top-left">
+    <div class="profile glass">
+      <div id="avatar-chip">R</div>
+      <div id="uname">@rookie</div>
+      <div class="stat" title="Coins"><span class="coin"></span><span id="coins">60</span></div>
+      <div id="heat" title="Heat"><i></i><i></i><i></i></div>
+    </div>
+    <section class="mission glass" aria-live="polite">
+      <div class="row"><h2 id="m-title">First Push</h2><span id="m-step">1 / 7</span></div>
+      <p id="m-desc"></p>
+      <div class="foot"><span id="m-prog"></span><span id="m-reward"></span><button id="m-skip" type="button">Skip</button></div>
+    </section>
+  </div>
+  <div id="feed"></div>
+  <div class="top-right">
+    <div class="mapwrap glass"><canvas id="minimap" width="320" height="320"></canvas><div id="compass"><b>N</b></div></div>
+    <div class="scorecard glass"><small>SCORE</small><span id="score">0</span></div>
+    <div class="tools">
+      <button id="time-btn" class="glass" type="button" title="Time of day">Golden hour</button>
+      <button id="gfx-btn" class="glass" type="button" title="Graphics quality">High</button>
+      <button id="radio-btn" class="glass" type="button" title="SeshFM radio (M)">SeshFM</button>
+      <button id="help-btn" class="glass" type="button" title="Controls (Tab)">?</button>
+    </div>
+  </div>
+  <div id="rideinfo" hidden></div>
+  <div id="banner"></div>
+  <div id="landed"></div>
+  <div id="combo"></div>
+  <div id="balance"><div id="needle"></div></div>
+  <div id="toasts"></div>
+  <div class="bottom-left glass">
+    <div class="speed"><span id="speed">0</span><small>KM/H</small></div>
+    <div><div id="mode">On foot</div><div class="popbar"><div id="pop"></div></div></div>
+  </div>
+  <div id="prompt"></div>
+  <div class="touchpad">
+    <div id="stick"><div id="knob"></div></div>
+    <div class="pads">
+      <button data-key="KeyQ" class="small">Board</button>
+      <button data-key="ArrowUp">▲</button>
+      <button data-key="KeyF" class="small">Action</button>
+      <button data-key="ArrowLeft">◀</button>
+      <button data-key="ArrowDown">▼</button>
+      <button data-key="ArrowRight">▶</button>
+      <button data-key="ShiftLeft" class="small">Grab</button>
+      <button data-key="KeyE" class="small">Grind</button>
+      <button data-key="Space" class="ollie">Ollie</button>
+      <button data-key="KeyH" class="small">Hailr</button>
+      <button data-key="KeyG" class="small">Hotwire</button>
+      <button data-key="KeyR" class="small">Reset</button>
+    </div>
+  </div>
+</div>
+
+<div id="help" hidden>
+  <div class="sheet" role="dialog" aria-label="Controls">
+    <header><h2>How to ride</h2><button id="help-close" type="button">Close</button></header>
+    <div class="grid">
+      <div><h3>Skating</h3><dl>
+        <dt><kbd>Q</kbd></dt><dd>Drop board / pick it up</dd>
+        <dt><kbd>W</kbd></dt><dd>Push (hold to keep pushing)</dd>
+        <dt><kbd>S</kbd></dt><dd>Brake</dd>
+        <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>Carve · spin in the air</dd>
+        <dt><kbd>Space</kbd></dt><dd>Hold to crouch, release to ollie</dd>
+        <dt><kbd>Shift</kbd></dt><dd>Grab (hold in the air)</dd>
+        <dt><kbd>E</kbd></dt><dd>Hold near a ledge or rail to grind</dd>
+      </dl></div>
+      <div><h3>Flip combos (in the air)</h3><dl>
+        <dt><kbd>←</kbd></dt><dd>Kickflip</dd>
+        <dt><kbd>→</kbd></dt><dd>Heelflip</dd>
+        <dt><kbd>↓</kbd></dt><dd>Pop shove-it</dd>
+        <dt><kbd>↑</kbd></dt><dd>Impossible</dd>
+        <dt><kbd>↓</kbd><kbd>←</kbd></dt><dd>Varial kickflip</dd>
+        <dt><kbd>↑</kbd><kbd>↓</kbd></dt><dd>360 flip</dd>
+        <dt><kbd>←</kbd><kbd>←</kbd></dt><dd>Double kickflip</dd>
+        <dt><kbd>↑</kbd><kbd>←</kbd></dt><dd>Hardflip</dd>
+      </dl></div>
+      <div><h3>Balance</h3><dl>
+        <dt><kbd>↓</kbd> / <kbd>↑</kbd></dt><dd>On the ground: manual / nose manual</dd>
+        <dt><kbd>W</kbd><kbd>S</kbd></dt><dd>Hold a manual</dd>
+        <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>Hold a grind</dd>
+        <dt>Arrow + <kbd>E</kbd></dt><dd>Grind type: nosegrind, 5-0, boardslide, crooked</dd>
+      </dl></div>
+      <div><h3>City</h3><dl>
+        <dt><kbd>F</kbd></dt><dd>Get in, get out, take a car, unlock a Zipp</dd>
+        <dt><kbd>G</kbd></dt><dd>Hot-wire a Zipp</dd>
+        <dt><kbd>H</kbd></dt><dd>Call a Hailr ride</dd>
+        <dt><kbd>Space</kbd></dt><dd>Handbrake when driving</dd>
+        <dt><kbd>R</kbd></dt><dd>Flip a vehicle upright</dd>
+        <dt><kbd>M</kbd></dt><dd>SeshFM radio on/off</dd>
+        <dt>Drag</dt><dd>Look around</dd>
+      </dl></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+} }
+</script>
+<script type="module" src="assets.js"></script>
+<script type="module" src="game.js"></script>
+</body>
+</html>

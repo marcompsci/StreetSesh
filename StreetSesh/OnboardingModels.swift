@@ -45,12 +45,13 @@ enum SkateStyle: String, Codable, CaseIterable {
 // MARK: - Avatar
 
 struct AvatarData: Codable, Equatable {
-    var skinToneIndex: Int   = 0
-    var hairStyle: Int       = 0
-    var hairColorIndex: Int  = 0
-    var topColorIndex: Int   = 0
-    var pantsColorIndex: Int = 8
-    var shoeColorIndex: Int  = 7
+    var skinToneIndex:  Int = 0
+    var hairStyle:      Int = 0
+    var hairColorIndex: Int = 0
+    var topColorIndex:  Int = 0
+    var pantsColorIndex:Int = 8
+    var shoeColorIndex: Int = 7
+    var shoeStyleIndex: Int = 0
 
     static let skinPalette: [String] = [
         "#FDDCB0", "#F3A96A", "#C68642", "#8D5524", "#4A2B19", "#FFE0C8"
@@ -67,6 +68,9 @@ struct AvatarData: Codable, Equatable {
     static let hairStyleNames: [String] = [
         "Short", "Curly", "Mohawk", "Long", "Beanie", "Bald"
     ]
+    static let shoeStyleNames: [String] = [
+        "Low-top", "High-top", "Vulc", "Boot", "Slip-on"
+    ]
 }
 
 // MARK: - Board
@@ -76,6 +80,7 @@ struct BoardData: Codable, Equatable {
     var deckGraphic:     Int = 0
     var truckColorIndex: Int = 0
     var wheelColorIndex: Int = 0
+    var gripTapeIndex:   Int = 0
 
     static let deckPalette: [String] = [
         "#E74C3C", "#E67E22", "#F1C40F", "#2ECC71",
@@ -87,5 +92,16 @@ struct BoardData: Codable, Equatable {
     static let wheelPalette: [String] = [
         "#FFFFFF", "#F1C40F", "#E74C3C", "#3498DB", "#2C2C2C"
     ]
-    static let graphics: [String] = ["🔥", "⚡️", "💀", "🌊", "🎯", "🐍", "🦅", "👾"]
+    // Fictional brand-style deck graphics — original names only, no real brand references
+    static let graphics: [String] = [
+        "PHANTOM", "ASPHALT", "CINDER", "IRONHAWK",
+        "TIDAL", "VOIDLINE", "RAWBONE", "PIXLRIOT"
+    ]
+    static let gripTapeNames: [String] = [
+        "Classic Black", "Clear", "Diamond", "Splatter", "Fade"
+    ]
+    // Background hex color for each grip tape style
+    static let gripTapeBgColors: [String] = [
+        "#0A0A0A", "#DCDCDC", "#0D0D1E", "#0A0A0A", "#131324"
+    ]
 }

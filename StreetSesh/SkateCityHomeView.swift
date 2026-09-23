@@ -2,7 +2,8 @@ import SwiftUI
 
 struct SkateCityHomeView: View {
     @EnvironmentObject private var state: SkateCityAppState
-    @State private var showCustomize = false
+    @State private var showCustomize  = false
+    @State private var showSkateCity  = false
     @State private var dailyChallenge: SkateChallenge = SKMockData.challenges[0]
     @State private var xpPulse = false
 
@@ -25,6 +26,7 @@ struct SkateCityHomeView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         headerSection
                         shopEntryBanner
+                        skateCityPlayCard
                         levelCard
                         homeRoomCard
                         dailyChallengeCard
@@ -47,6 +49,16 @@ struct SkateCityHomeView: View {
                 .presentationDetents([.large])
                 .presentationBackground(Color.skDark)
         }
+        #if os(iOS)
+        .fullScreenCover(isPresented: $showSkateCity) {
+            SkateCityGameView(
+                username: state.profile.handle,
+                skinHex: state.profile.avatarStyle.skinTone,
+                hoodieHex: state.profile.avatarStyle.top,
+                deckHex: boardAccentHex
+            )
+        }
+        #endif
     }
 
     // MARK: - Header
@@ -70,6 +82,84 @@ struct SkateCityHomeView: View {
                     .overlay(Circle().stroke(Color.skLime, lineWidth: 1.5))
             }
         }
+    }
+
+    // MARK: - SkateCity Play Card
+
+    private var boardAccentHex: String {
+        SKMockData.boards.first(where: { $0.id == state.profile.selectedBoard })?.accentHex ?? "#E74C3C"
+    }
+
+    private var skateCityPlayCard: some View {
+        Button { showSkateCity = true } label: {
+            ZStack(alignment: .bottomLeading) {
+                // Background gradient — city dusk feel
+                LinearGradient(
+                    colors: [Color(hex: "#0D1117"), Color(hex: "#1A2332"), Color(hex: "#2D1B4E")],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                // City skyline silhouette (simple shapes)
+                HStack(alignment: .bottom, spacing: 2) {
+                    ForEach([24, 38, 28, 52, 34, 44, 20, 58, 30, 42], id: \.self) { h in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.06))
+                            .frame(width: 12, height: CGFloat(h))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.trailing, 8)
+
+                // Lime accent glow
+                Circle()
+                    .fill(Color.skLime.opacity(0.12))
+                    .frame(width: 160, height: 160)
+                    .blur(radius: 40)
+                    .offset(x: 60, y: 20)
+
+                // Content
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.skCoral)
+                            .frame(width: 7, height: 7)
+                        Text("LIVE WORLD")
+                            .font(.system(size: 10, weight: .black))
+                            .tracking(1.5)
+                            .foregroundStyle(Color.skCoral)
+                    }
+                    HStack(spacing: 0) {
+                        Text("Skate")
+                            .font(.system(size: 30, weight: .black))
+                            .foregroundStyle(Color.white)
+                        Text("City")
+                            .font(.system(size: 30, weight: .black))
+                            .foregroundStyle(Color.skLime)
+                    }
+                    Text("An open city built for skating.")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.6))
+
+                    HStack(spacing: 8) {
+                        Label("Drop in", systemImage: "play.fill")
+                            .font(.system(size: 13, weight: .black))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.skLime)
+                            .clipShape(Capsule())
+                        Text("Requires internet")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.white.opacity(0.4))
+                    }
+                }
+                .padding(18)
+            }
+            .frame(height: 162)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Shop Entry Banner

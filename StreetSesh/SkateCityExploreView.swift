@@ -1,29 +1,62 @@
 import SwiftUI
 import MapKit
 
+// MARK: - SF Landmark Data
+
+private struct SFLandmark {
+    let name: String
+    let icon: String
+    let coordinate: CLLocationCoordinate2D
+
+    static let all: [SFLandmark] = [
+        SFLandmark(
+            name: "Golden Gate Bridge",
+            icon: "building.columns.fill",
+            coordinate: CLLocationCoordinate2D(latitude: 37.8199, longitude: -122.4783)
+        ),
+        SFLandmark(
+            name: "Bay Bridge",
+            icon: "road.lanes.curved.right",
+            coordinate: CLLocationCoordinate2D(latitude: 37.7983, longitude: -122.3778)
+        ),
+        SFLandmark(
+            name: "Twin Peaks",
+            icon: "mountain.2.fill",
+            coordinate: CLLocationCoordinate2D(latitude: 37.7544, longitude: -122.4477)
+        )
+    ]
+}
+
+// MARK: - Explore View
+
 struct SkateCityExploreView: View {
     @EnvironmentObject private var state: SkateCityAppState
     @State private var locationManager = SKLocationManager()
     @State private var displayMode: DisplayMode = .map
     @State private var mapPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
-            center: SKMockData.defaultLocation,
-            span: MKCoordinateSpan(latitudeDelta: 0.09, longitudeDelta: 0.09)
+            center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+            span: MKCoordinateSpan(latitudeDelta: 0.18, longitudeDelta: 0.18)
         )
     )
     @State private var selectedShop: SkateShop? = nil
     @State private var selectedSpot: SkateSpot? = nil
+    @State private var selectedLiveShop: MKMapItem? = nil
+    @State private var showLiveShopSheet = false
     @State private var filterMode: FilterMode = .all
     @State private var showPrivacyInfo = false
+    @State private var liveShops: [MKMapItem] = []
+    @State private var activeRoute: MKRoute? = nil
+    @State private var isLoadingDirections = false
 
     enum DisplayMode: String, CaseIterable {
         case map  = "Map"
         case list = "List"
     }
     enum FilterMode: String, CaseIterable {
-        case all    = "All"
-        case shops  = "Shops"
-        case spots  = "Spots"
+        case all   = "All"
+        case shops = "Shops"
+        case spots = "Spots"
     }
 
     var body: some View {
@@ -54,10 +87,22 @@ struct SkateCityExploreView: View {
                 .presentationDetents([.medium, .large])
                 .presentationBackground(Color.skDark)
         }
+        .sheet(isPresented: $showLiveShopSheet) {
+            if let shop = selectedLiveShop {
+                LiveShopDetailSheet(item: shop) {
+                    Task { await getDirections(to: shop) }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationBackground(Color.skDark)
+            }
+        }
         .sheet(isPresented: $showPrivacyInfo) {
             SKPrivacyPanel(locationManager: locationManager)
                 .presentationDetents([.medium])
                 .presentationBackground(Color.skDark)
+        }
+        .task {
+            await searchRealShops()
         }
     }
 
@@ -86,7 +131,6 @@ struct SkateCityExploreView: View {
             .padding(.horizontal, 16)
             .padding(.top, 8)
 
-            // Mode + Filter
             HStack(spacing: 10) {
                 Picker("Mode", selection: $displayMode) {
                     ForEach(DisplayMode.allCases, id: \.self) { Text($0.rawValue) }
@@ -124,28 +168,111 @@ struct SkateCityExploreView: View {
     // MARK: - Map
 
     private var mapContent: some View {
-        Map(position: $mapPosition) {
-            // Shops
-            if filterMode != .spots {
-                ForEach(SKMockData.shops) { shop in
-                    Annotation(shop.name, coordinate: shop.coordinate, anchor: .bottom) {
-                        shopPin(shop)
-                            .onTapGesture { selectedShop = shop }
+        ZStack(alignment: .bottomTrailing) {
+            Map(position: $mapPosition) {
+
+                // Shops — live Apple Maps results or mock fallback
+                if filterMode != .spots {
+                    if liveShops.isEmpty {
+                        ForEach(SKMockData.shops) { shop in
+                            Annotation(shop.name, coordinate: shop.coordinate, anchor: .bottom) {
+                                shopPin(shop)
+                                    .onTapGesture { selectedShop = shop }
+                            }
+                        }
+                    } else {
+                        ForEach(liveShops.indices, id: \.self) { i in
+                            let item = liveShops[i]
+                            Annotation(item.name ?? "Skate Shop",
+                                       coordinate: item.placemark.coordinate,
+                                       anchor: .bottom) {
+                                liveShopPin()
+                                    .onTapGesture {
+                                        selectedLiveShop = item
+                                        showLiveShopSheet = true
+                                    }
+                            }
+                        }
                     }
+                }
+
+                // Skate spots
+                if filterMode != .shops {
+                    ForEach(SKMockData.spots) { spot in
+                        Annotation(spot.name, coordinate: spot.coordinate, anchor: .bottom) {
+                            spotPin(spot)
+                                .onTapGesture { selectedSpot = spot }
+                        }
+                    }
+                }
+
+                // SF Landmarks — always visible regardless of filter
+                ForEach(SFLandmark.all, id: \.name) { landmark in
+                    Annotation(landmark.name, coordinate: landmark.coordinate, anchor: .bottom) {
+                        landmarkPin(landmark)
+                    }
+                }
+
+                // Walking route overlay
+                if let route = activeRoute {
+                    MapPolyline(route.polyline)
+                        .stroke(Color(hex: "#CCFF40"), lineWidth: 5)
                 }
             }
-            // Spots
-            if filterMode != .shops {
-                ForEach(SKMockData.spots) { spot in
-                    Annotation(spot.name, coordinate: spot.coordinate, anchor: .bottom) {
-                        spotPin(spot)
-                            .onTapGesture { selectedSpot = spot }
+            .mapStyle(.standard)
+            .ignoresSafeArea(edges: .bottom)
+
+            // Route / loading controls
+            if activeRoute != nil || isLoadingDirections {
+                VStack(spacing: 8) {
+                    if isLoadingDirections {
+                        HStack(spacing: 8) {
+                            ProgressView().tint(Color(hex: "#CCFF40"))
+                            Text("Getting walking route…")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.skText)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(Color.skDark.opacity(0.92))
+                        .clipShape(Capsule())
+                    }
+                    if activeRoute != nil {
+                        Button { activeRoute = nil } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "xmark.circle.fill")
+                                Text("Clear Route")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(Color.skDark.opacity(0.92))
+                            .foregroundStyle(.skText)
+                            .clipShape(Capsule())
+                        }
                     }
                 }
+                .padding(.bottom, 100)
+                .padding(.trailing, 16)
             }
         }
-        .mapStyle(.standard)
-        .ignoresSafeArea(edges: .bottom)
+    }
+
+    // MARK: - Map Pins
+
+    private func liveShopPin() -> some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "#0ADFB4"))
+                    .frame(width: 36, height: 36)
+                    .shadow(color: Color(hex: "#0ADFB4").opacity(0.5), radius: 6)
+                Image(systemName: "storefront.fill")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.black)
+            }
+            Triangle()
+                .fill(Color(hex: "#0ADFB4"))
+                .frame(width: 8, height: 5)
+        }
     }
 
     private func shopPin(_ shop: SkateShop) -> some View {
@@ -161,6 +288,23 @@ struct SkateCityExploreView: View {
             Triangle()
                 .fill(Color(hex: shop.accentColorHex))
                 .frame(width: 8, height: 5)
+        }
+    }
+
+    private func landmarkPin(_ landmark: SFLandmark) -> some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "#FF9500"))
+                    .frame(width: 32, height: 32)
+                    .shadow(color: Color(hex: "#FF9500").opacity(0.45), radius: 5)
+                Image(systemName: landmark.icon)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            Triangle()
+                .fill(Color(hex: "#FF9500"))
+                .frame(width: 7, height: 4)
         }
     }
 
@@ -191,6 +335,7 @@ struct SkateCityExploreView: View {
                 if filterMode != .shops {
                     spotsSection
                 }
+                landmarksSection
             }
             .padding(16)
         }
@@ -198,13 +343,63 @@ struct SkateCityExploreView: View {
 
     private var shopsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SKSectionHeader(title: "SKATE SHOPS")
-            ForEach(SKMockData.shops) { shop in
-                Button { selectedShop = shop } label: {
-                    shopRow(shop)
+            if liveShops.isEmpty {
+                SKSectionHeader(title: "SKATE SHOPS")
+                ForEach(SKMockData.shops) { shop in
+                    Button { selectedShop = shop } label: { shopRow(shop) }
+                }
+            } else {
+                SKSectionHeader(title: "SKATE SHOPS  ·  LIVE")
+                ForEach(liveShops.indices, id: \.self) { i in
+                    let item = liveShops[i]
+                    Button {
+                        selectedLiveShop = item
+                        showLiveShopSheet = true
+                    } label: {
+                        liveShopRow(item)
+                    }
                 }
             }
         }
+    }
+
+    private func liveShopRow(_ item: MKMapItem) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(hex: "#0ADFB4").opacity(0.12))
+                    .frame(width: 48, height: 48)
+                Image(systemName: "storefront.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color(hex: "#0ADFB4"))
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(item.name ?? "Skate Shop")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.skText)
+                    Text("LIVE")
+                        .font(.system(size: 8, weight: .black))
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color(hex: "#0ADFB4").opacity(0.15))
+                        .foregroundStyle(Color(hex: "#0ADFB4"))
+                        .clipShape(Capsule())
+                }
+                if let thoroughfare = item.placemark.thoroughfare {
+                    Text(thoroughfare)
+                        .font(.caption)
+                        .foregroundStyle(.skSub)
+                }
+                if let locality = item.placemark.locality {
+                    Text(locality)
+                        .font(.caption2)
+                        .foregroundStyle(.skSub)
+                }
+            }
+            Spacer()
+            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.skSub)
+        }
+        .skBorderCard(padding: 12)
     }
 
     private func shopRow(_ shop: SkateShop) -> some View {
@@ -227,8 +422,7 @@ struct SkateCityExploreView: View {
                         .foregroundStyle(shop.isOpen ? Color.green : Color.skSub)
                         .clipShape(Capsule())
                 }
-                Text(shop.specialty)
-                    .font(.caption).foregroundStyle(.skSub)
+                Text(shop.specialty).font(.caption).foregroundStyle(.skSub)
                 HStack(spacing: 4) {
                     Image(systemName: "star.fill").font(.system(size: 9)).foregroundStyle(.yellow)
                     Text(String(format: "%.1f", shop.rating)).font(.caption2).foregroundStyle(.skSub)
@@ -246,9 +440,7 @@ struct SkateCityExploreView: View {
         VStack(alignment: .leading, spacing: 10) {
             SKSectionHeader(title: "SKATE SPOTS")
             ForEach(SKMockData.spots) { spot in
-                Button { selectedSpot = spot } label: {
-                    spotRow(spot)
-                }
+                Button { selectedSpot = spot } label: { spotRow(spot) }
             }
         }
     }
@@ -293,9 +485,81 @@ struct SkateCityExploreView: View {
         }
         .skBorderCard(padding: 12)
     }
+
+    private var landmarksSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SKSectionHeader(title: "SF LANDMARKS")
+            ForEach(SFLandmark.all, id: \.name) { landmark in
+                Button {
+                    let item = MKMapItem(placemark: MKPlacemark(coordinate: landmark.coordinate))
+                    item.name = landmark.name
+                    item.openInMaps(launchOptions: [
+                        MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+                    ])
+                } label: {
+                    landmarkRow(landmark)
+                }
+            }
+        }
+    }
+
+    private func landmarkRow(_ landmark: SFLandmark) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(hex: "#FF9500").opacity(0.12))
+                    .frame(width: 48, height: 48)
+                Image(systemName: landmark.icon)
+                    .font(.title3)
+                    .foregroundStyle(Color(hex: "#FF9500"))
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(landmark.name)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.skText)
+                Text("San Francisco · Tap for directions")
+                    .font(.caption)
+                    .foregroundStyle(.skSub)
+            }
+            Spacer()
+            Image(systemName: "arrow.triangle.turn.up.right.circle")
+                .font(.subheadline)
+                .foregroundStyle(.skSub)
+        }
+        .skBorderCard(padding: 12)
+    }
+
+    // MARK: - Data & Directions
+
+    private func searchRealShops() async {
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = "skate shop"
+        request.region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+            span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5)
+        )
+        guard let response = try? await MKLocalSearch(request: request).start() else { return }
+        liveShops = response.mapItems
+    }
+
+    private func getDirections(to item: MKMapItem) async {
+        isLoadingDirections = true
+        let request = MKDirections.Request()
+        request.source = locationManager.isEnabled
+            ? MKMapItem.forCurrentLocation()
+            : MKMapItem(placemark: MKPlacemark(coordinate: locationManager.mapCenter))
+        request.destination = item
+        request.transportType = .walking
+        if let response = try? await MKDirections(request: request).calculate(),
+           let route = response.routes.first {
+            activeRoute = route
+            mapPosition = .rect(route.polyline.boundingMapRect.insetBy(dx: -3000, dy: -3000))
+        }
+        isLoadingDirections = false
+    }
 }
 
-// MARK: - Triangle shape for map pins
+// MARK: - Triangle Shape
 
 private struct Triangle: Shape {
     func path(in rect: CGRect) -> Path {
@@ -305,6 +569,168 @@ private struct Triangle: Shape {
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
         path.closeSubpath()
         return path
+    }
+}
+
+// MARK: - Live Shop Detail Sheet
+
+struct LiveShopDetailSheet: View {
+    let item: MKMapItem
+    let onDirections: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var lookAroundScene: MKLookAroundScene? = nil
+    @State private var lookAroundChecked = false
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 20) {
+                shopHeader
+                if item.phoneNumber != nil || item.url != nil {
+                    contactRow
+                }
+                Divider().background(Color.skBorder)
+                storefrontSection
+                Divider().background(Color.skBorder)
+                actionsSection
+                Spacer(minLength: 40)
+            }
+            .padding(20)
+        }
+        .task {
+            lookAroundScene = try? await MKLookAroundSceneRequest(
+                coordinate: item.placemark.coordinate
+            ).scene
+            lookAroundChecked = true
+        }
+    }
+
+    private var shopHeader: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color(hex: "#0ADFB4").opacity(0.15))
+                    .frame(width: 60, height: 60)
+                Image(systemName: "storefront.fill")
+                    .font(.title2)
+                    .foregroundStyle(Color(hex: "#0ADFB4"))
+            }
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(item.name ?? "Skate Shop")
+                        .font(.title3.bold())
+                        .foregroundStyle(.skText)
+                    Text("LIVE")
+                        .font(.system(size: 8, weight: .black))
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color(hex: "#0ADFB4").opacity(0.15))
+                        .foregroundStyle(Color(hex: "#0ADFB4"))
+                        .clipShape(Capsule())
+                }
+                if let title = item.placemark.title {
+                    Text(title)
+                        .font(.caption)
+                        .foregroundStyle(.skSub)
+                        .lineLimit(2)
+                }
+            }
+        }
+    }
+
+    private var contactRow: some View {
+        HStack(spacing: 10) {
+            if let phone = item.phoneNumber,
+               let phoneURL = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
+                Link(destination: phoneURL) {
+                    contactChip(icon: "phone.fill", label: phone)
+                }
+            }
+            if let url = item.url {
+                Link(destination: url) {
+                    contactChip(icon: "globe", label: "Website")
+                }
+            }
+        }
+    }
+
+    private func contactChip(icon: String, label: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon).font(.caption).foregroundStyle(.skLime)
+            Text(label).font(.caption.weight(.semibold)).foregroundStyle(.skText)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 7)
+        .background(Color.skMuted)
+        .clipShape(Capsule())
+    }
+
+    @ViewBuilder
+    private var storefrontSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("STOREFRONT VIEW")
+                .font(.system(size: 10, weight: .black))
+                .foregroundStyle(.skSub)
+
+            if !lookAroundChecked {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.skMuted)
+                    .frame(height: 160)
+                    .overlay { ProgressView().tint(.skSub) }
+            } else if let scene = lookAroundScene {
+                #if os(iOS)
+                LookAroundPreview(initialScene: scene)
+                    .frame(height: 160)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                #endif
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.skMuted)
+                    .frame(height: 80)
+                    .overlay {
+                        HStack(spacing: 8) {
+                            Image(systemName: "eye.slash").foregroundStyle(.skSub)
+                            Text("Street view not available here")
+                                .font(.caption).foregroundStyle(.skSub)
+                        }
+                    }
+            }
+        }
+    }
+
+    private var actionsSection: some View {
+        VStack(spacing: 10) {
+            Button {
+                dismiss()
+                onDirections()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
+                    Text("Show Walking Route")
+                }
+                .font(.subheadline.weight(.black))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color(hex: "#CCFF40"))
+                .foregroundStyle(.black)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+
+            Button {
+                item.openInMaps(launchOptions: [
+                    MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+                ])
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "map.fill")
+                    Text("Open in Apple Maps")
+                }
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.skMuted)
+                .foregroundStyle(.skText)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+        }
     }
 }
 
@@ -368,7 +794,7 @@ struct SKPrivacyPanel: View {
     }
 }
 
-// MARK: - Shop Detail Sheet
+// MARK: - Shop Detail Sheet (mock data)
 
 struct SKShopDetailSheet: View {
     let shop: SkateShop
@@ -390,9 +816,9 @@ struct SKShopDetailSheet: View {
                 }
             }
             HStack(spacing: 20) {
-                infoChip(icon: "star.fill", value: String(format: "%.1f", shop.rating), color: .yellow)
-                infoChip(icon: "location.fill", value: shop.distanceText, color: .skLime)
-                infoChip(icon: "tag.fill", value: shop.specialty, color: .skCoral)
+                infoChip(icon: "star.fill",     value: String(format: "%.1f", shop.rating), color: .yellow)
+                infoChip(icon: "location.fill", value: shop.distanceText,                   color: .skLime)
+                infoChip(icon: "tag.fill",      value: shop.specialty,                      color: .skCoral)
             }
             Divider().background(Color.skBorder)
             VStack(alignment: .leading, spacing: 6) {
@@ -400,6 +826,25 @@ struct SKShopDetailSheet: View {
                 Text(shop.featuredChallenge).font(.subheadline.bold()).foregroundStyle(.skText)
             }
             .padding(14).background(Color.skMuted).clipShape(RoundedRectangle(cornerRadius: 12))
+
+            Button {
+                let item = MKMapItem(placemark: MKPlacemark(coordinate: shop.coordinate))
+                item.name = shop.name
+                item.openInMaps(launchOptions: [
+                    MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+                ])
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
+                    Text("Get Directions in Maps")
+                }
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.skMuted)
+                .foregroundStyle(.skText)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
             Spacer()
         }
         .padding(20)
@@ -459,6 +904,25 @@ struct SKSpotDetailSheet: View {
                         Text("\(spot.popularity)").font(.subheadline.bold()).foregroundStyle(.skText)
                     }
                 }
+            }
+
+            Button {
+                let item = MKMapItem(placemark: MKPlacemark(coordinate: spot.coordinate))
+                item.name = spot.name
+                item.openInMaps(launchOptions: [
+                    MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+                ])
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
+                    Text("Get Directions in Maps")
+                }
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.skMuted)
+                .foregroundStyle(.skText)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             Spacer()
         }
