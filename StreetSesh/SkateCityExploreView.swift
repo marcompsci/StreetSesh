@@ -171,27 +171,24 @@ struct SkateCityExploreView: View {
         ZStack(alignment: .bottomTrailing) {
             Map(position: $mapPosition) {
 
-                // Shops — live Apple Maps results or mock fallback
+                // Shops — Bay Area real shops always visible + live Apple Maps overlay
                 if filterMode != .spots {
-                    if liveShops.isEmpty {
-                        ForEach(SKMockData.shops) { shop in
-                            Annotation(shop.name, coordinate: shop.coordinate, anchor: .bottom) {
-                                shopPin(shop)
-                                    .onTapGesture { selectedShop = shop }
-                            }
+                    ForEach(SkateShop.bayArea) { shop in
+                        Annotation(shop.name, coordinate: shop.coordinate, anchor: .bottom) {
+                            shopPin(shop)
+                                .onTapGesture { selectedShop = shop }
                         }
-                    } else {
-                        ForEach(liveShops.indices, id: \.self) { i in
-                            let item = liveShops[i]
-                            Annotation(item.name ?? "Skate Shop",
-                                       coordinate: item.placemark.coordinate,
-                                       anchor: .bottom) {
-                                liveShopPin()
-                                    .onTapGesture {
-                                        selectedLiveShop = item
-                                        showLiveShopSheet = true
-                                    }
-                            }
+                    }
+                    ForEach(liveShops.indices, id: \.self) { i in
+                        let item = liveShops[i]
+                        Annotation(item.name ?? "Skate Shop",
+                                   coordinate: item.placemark.coordinate,
+                                   anchor: .bottom) {
+                            liveShopPin()
+                                .onTapGesture {
+                                    selectedLiveShop = item
+                                    showLiveShopSheet = true
+                                }
                         }
                     }
                 }
@@ -343,13 +340,13 @@ struct SkateCityExploreView: View {
 
     private var shopsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if liveShops.isEmpty {
-                SKSectionHeader(title: "SKATE SHOPS")
-                ForEach(SKMockData.shops) { shop in
-                    Button { selectedShop = shop } label: { shopRow(shop) }
-                }
-            } else {
-                SKSectionHeader(title: "SKATE SHOPS  ·  LIVE")
+            SKSectionHeader(title: "BAY AREA SKATE SHOPS")
+            ForEach(SkateShop.bayArea) { shop in
+                Button { selectedShop = shop } label: { shopRow(shop) }
+            }
+            if !liveShops.isEmpty {
+                SKSectionHeader(title: "NEARBY  ·  LIVE")
+                    .padding(.top, 8)
                 ForEach(liveShops.indices, id: \.self) { i in
                     let item = liveShops[i]
                     Button {
@@ -800,54 +797,99 @@ struct SKShopDetailSheet: View {
     let shop: SkateShop
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(Color(hex: shop.accentColorHex).opacity(0.18))
-                        .frame(width: 60, height: 60)
-                    Image(systemName: "storefront.fill")
-                        .font(.title2)
-                        .foregroundStyle(Color(hex: shop.accentColorHex))
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color(hex: shop.accentColorHex).opacity(0.18))
+                            .frame(width: 60, height: 60)
+                        Image(systemName: "storefront.fill")
+                            .font(.title2)
+                            .foregroundStyle(Color(hex: shop.accentColorHex))
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(shop.name).font(.title3.bold()).foregroundStyle(.skText)
+                        Text(shop.neighborhood).font(.caption.weight(.semibold)).foregroundStyle(Color(hex: shop.accentColorHex))
+                        Text(shop.address).font(.caption).foregroundStyle(.skSub)
+                    }
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(shop.name).font(.title3.bold()).foregroundStyle(.skText)
-                    Text(shop.address).font(.subheadline).foregroundStyle(.skSub)
+                HStack(spacing: 20) {
+                    infoChip(icon: "star.fill",     value: String(format: "%.1f", shop.rating), color: .yellow)
+                    infoChip(icon: "location.fill", value: shop.distanceText,                   color: .skLime)
+                    infoChip(icon: "tag.fill",      value: shop.specialty,                      color: .skCoral)
                 }
-            }
-            HStack(spacing: 20) {
-                infoChip(icon: "star.fill",     value: String(format: "%.1f", shop.rating), color: .yellow)
-                infoChip(icon: "location.fill", value: shop.distanceText,                   color: .skLime)
-                infoChip(icon: "tag.fill",      value: shop.specialty,                      color: .skCoral)
-            }
-            Divider().background(Color.skBorder)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("FEATURED CHALLENGE").font(.system(size: 10, weight: .black)).foregroundStyle(.skSub)
-                Text(shop.featuredChallenge).font(.subheadline.bold()).foregroundStyle(.skText)
-            }
-            .padding(14).background(Color.skMuted).clipShape(RoundedRectangle(cornerRadius: 12))
 
-            Button {
-                let item = MKMapItem(placemark: MKPlacemark(coordinate: shop.coordinate))
-                item.name = shop.name
-                item.openInMaps(launchOptions: [
-                    MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
-                ])
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
-                    Text("Get Directions in Maps")
+                // Contact info
+                if shop.phone != nil || shop.website != nil || shop.owners != nil {
+                    Divider().background(Color.skBorder)
+                    contactRow
                 }
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.skMuted)
-                .foregroundStyle(.skText)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                Divider().background(Color.skBorder)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("FEATURED CHALLENGE").font(.system(size: 10, weight: .black)).foregroundStyle(.skSub)
+                    Text(shop.featuredChallenge).font(.subheadline.bold()).foregroundStyle(.skText)
+                }
+                .padding(14).background(Color.skMuted).clipShape(RoundedRectangle(cornerRadius: 12))
+
+                Button {
+                    let item = MKMapItem(placemark: MKPlacemark(coordinate: shop.coordinate))
+                    item.name = shop.name
+                    item.openInMaps(launchOptions: [
+                        MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking
+                    ])
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
+                        Text("Get Directions in Maps")
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.skMuted)
+                    .foregroundStyle(.skText)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                Spacer(minLength: 40)
             }
-            Spacer()
+            .padding(20)
         }
-        .padding(20)
+    }
+
+    @ViewBuilder
+    private var contactRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let owners = shop.owners {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.fill").font(.caption).foregroundStyle(.skSub)
+                    Text(owners).font(.caption).foregroundStyle(.skSub)
+                }
+            }
+            HStack(spacing: 10) {
+                if let phone = shop.phone,
+                   let phoneURL = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") {
+                    Link(destination: phoneURL) {
+                        contactChip(icon: "phone.fill", label: phone)
+                    }
+                }
+                if let website = shop.website, let url = URL(string: website) {
+                    Link(destination: url) {
+                        contactChip(icon: "globe", label: "Website")
+                    }
+                }
+            }
+        }
+    }
+
+    private func contactChip(icon: String, label: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon).font(.caption).foregroundStyle(.skLime)
+            Text(label).font(.caption.weight(.semibold)).foregroundStyle(.skText)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 7)
+        .background(Color.skMuted)
+        .clipShape(Capsule())
     }
 
     private func infoChip(icon: String, value: String, color: Color) -> some View {

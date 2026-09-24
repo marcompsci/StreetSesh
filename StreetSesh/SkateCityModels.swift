@@ -87,6 +87,9 @@ struct SkateShop: Identifiable {
     var specialty: String
     var accentColorHex: String
     var featuredChallenge: String
+    var phone: String?    = nil
+    var website: String?  = nil
+    var owners: String?   = nil
 }
 
 // MARK: - Skate Spot
