@@ -503,6 +503,26 @@ for (const [name, list] of Object.entries(buckets)) {
   scene.add(m);
 }
 
+// Graffiti walls — brand logos painted on building sides around the city
+{
+  const RE = SIDE; // distance from block centre to road edge (~23.5)
+  const walls = [
+    // [worldX, worldZ, rotY, brandTagList]
+    [blockAt(2) - 3,      blockAt(2) - RE + 0.08, Math.PI,        ['THRASHER','ANTI HERO','SPITFIRE','DGK','BAKER','HUF']],
+    [blockAt(2) + RE - 0.08, blockAt(2) + 4,    Math.PI / 2,     ['PALACE','GIRL','REAL','POLAR','ZERO','ELEMENT']],
+    [blockAt(3),          blockAt(3) - RE + 0.08, Math.PI,        ['TOY MACHINE','CREATURE','POWELL','SANTA CRUZ','ZERO']],
+    [blockAt(3) - RE + 0.08, blockAt(3) - 3,   -Math.PI / 2,     ['BAKER','INDEPENDENT','BIRDHOUSE','PLAN B','DGK']],
+    [blockAt(2) + RE - 0.08, blockAt(3) - 4,    Math.PI / 2,     ['THRASHER','SPITFIRE','HUF','ANTI HERO','BAKER']],
+    [blockAt(1) + RE - 0.08, blockAt(2),         Math.PI / 2,     ['POLAR','PALACE','GIRL','ELEMENT','CREATURE']],
+    [blockAt(2) + 4,      blockAt(3) - RE + 0.08, Math.PI,        ['ZERO','BAKER','REAL','SANTA CRUZ','TOY MACHINE']],
+    [blockAt(4) - RE + 0.08, blockAt(2) + 4,   -Math.PI / 2,     ['POWELL','BIRDHOUSE','PLAN B','INDEPENDENT','EMERICA']],
+  ];
+  for (const [wx, wz, ry, tags] of walls) {
+    const w = A.makeGraffitiWall(tags, 10, 5);
+    w.position.set(wx, 0, wz); w.rotation.y = ry; scene.add(w);
+  }
+}
+
 function waterNormals() {
   const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const x = c.getContext('2d'); const img = x.createImageData(S, S);
   const H = (u, v) => { let h = 0; const W = [[3, 1, 0.5], [1, 4, 0.35], [5, 2, 0.25], [2, 7, 0.18], [9, 3, 0.1], [7, 11, 0.07]]; for (const [a, b, amp] of W) h += Math.sin((u * a + v * b) * Math.PI * 2 + a * 1.3) * amp; return h; };

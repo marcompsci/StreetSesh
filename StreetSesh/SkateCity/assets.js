@@ -65,8 +65,166 @@ export const SKIN_TONES = ['#f3d2b3', '#dcae86', '#b98059', '#8a5a3c', '#5e3b26'
 export const HOODIES = ['#ff7a59', '#17b3a3', '#5b6cff', '#f2c14e', '#2b2f38', '#e8e6e1'];
 export const DECKS = ['#ff4f6d', '#2fb8ff', '#ffd23f', '#8b5cf6', '#1e1e1e', '#3ddc84'];
 
+/* ========== BRAND SYSTEM ========== */
+
+// Skate deck brands — selectable in board builder
+export const DECK_BRANDS = [
+  { id: 'anti_hero',   label: 'Anti Hero',     bg: '#e63522', fg: '#ffffff' },
+  { id: 'baker',       label: 'Baker',          bg: '#1a1a1a', fg: '#d4a420' },
+  { id: 'birdhouse',   label: 'Birdhouse',      bg: '#f0ede6', fg: '#222222' },
+  { id: 'creature',    label: 'Creature',       bg: '#180808', fg: '#cc2200' },
+  { id: 'dgk',         label: 'DGK',            bg: '#1a1a1a', fg: '#f5c518' },
+  { id: 'element',     label: 'Element',        bg: '#1e2e14', fg: '#7dcc4a' },
+  { id: 'girl',        label: 'Girl',           bg: '#f5f5f0', fg: '#333333' },
+  { id: 'palace',      label: 'Palace',         bg: '#0e0e22', fg: '#ffffff' },
+  { id: 'plan_b',      label: 'Plan B',         bg: '#1a1a1a', fg: '#e8e8e8' },
+  { id: 'polar',       label: 'Polar',          bg: '#152038', fg: '#e8e8e8' },
+  { id: 'powell',      label: 'Powell Peralta', bg: '#c8a800', fg: '#1a1a1a' },
+  { id: 'real',        label: 'Real',           bg: '#1a1a1a', fg: '#f0f0f0' },
+  { id: 'santa_cruz',  label: 'Santa Cruz',     bg: '#c22014', fg: '#ffffff' },
+  { id: 'toy_machine', label: 'Toy Machine',    bg: '#ff5500', fg: '#ffffff' },
+  { id: 'zero',        label: 'Zero',           bg: '#0a0a0a', fg: '#e0e0e0' },
+  { id: 'spitfire',    label: 'Spitfire',       bg: '#1a1a1a', fg: '#ff5500' },
+];
+
+// Hoodie / apparel brands — shown as chest patch on avatar
+export const APPAREL_BRANDS = [
+  { id: 'thrasher', label: 'Thrasher',     bg: '#cc1400', fg: '#ffffff' },
+  { id: 'huf',      label: 'HUF',          bg: '#1a1a1a', fg: '#ffffff' },
+  { id: 'dgk',      label: 'DGK',          bg: '#1a1a1a', fg: '#f5c518' },
+  { id: 'palace',   label: 'Palace',       bg: '#0e0e22', fg: '#ffffff' },
+  { id: 'element',  label: 'Element',      bg: '#1e2e14', fg: '#7dcc4a' },
+  { id: 'antihero', label: 'Anti Hero',    bg: '#c22014', fg: '#ffffff' },
+  { id: 'spitfire', label: 'Spitfire',     bg: '#1a1a1a', fg: '#ff5500' },
+  { id: 'indy',     label: 'Independent',  bg: '#1a1a1a', fg: '#cc0000' },
+  { id: 'baker',    label: 'Baker',        bg: '#1a1a1a', fg: '#d4a420' },
+  { id: 'polar',    label: 'Polar',        bg: '#152038', fg: '#e8e8e8' },
+];
+
+// Shoe brands — appear as side stripe accent on avatar shoes
+export const SHOE_BRANDS = [
+  { id: 'vans',    label: 'Vans',          accent: '#1a1a1a' },
+  { id: 'nike_sb', label: 'Nike SB',       accent: '#ff4400' },
+  { id: 'dc',      label: 'DC',            accent: '#2233aa' },
+  { id: 'emerica', label: 'Emerica',       accent: '#cc2200' },
+  { id: 'lakai',   label: 'Lakai',         accent: '#333333' },
+  { id: 'etnies',  label: 'Etnies',        accent: '#cc0000' },
+  { id: 'nb_num',  label: 'NB Numeric',    accent: '#cc0000' },
+  { id: 'cons',    label: 'CONS',          accent: '#1a1a1a' },
+];
+
+// Paints brand-specific deck graphic onto an existing 2D canvas context.
+function paintDeckBrand(ctx, brand) {
+  const { bg, fg, label } = brand;
+  const cw = 128, ch = 512;
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
+  ctx.globalAlpha = 0.035;
+  for (let i = 0; i < 60; i++) {
+    ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000';
+    ctx.fillRect(Math.random() * cw, Math.random() * ch, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = fg; ctx.globalAlpha = 0.11;
+  ctx.fillRect(0, 0, cw, 50); ctx.fillRect(0, ch - 50, cw, 50);
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const cy = ch / 2, parts = label.split(' ');
+  if (parts.length === 1) {
+    const fs = Math.round(cw / Math.max(label.length * 0.58, 1.2));
+    ctx.fillStyle = fg; ctx.shadowColor = fg; ctx.shadowBlur = 10;
+    ctx.font = `900 ${fs}px system-ui, sans-serif`;
+    ctx.fillText(label.toUpperCase(), cw / 2, cy);
+    ctx.shadowBlur = 0;
+  } else {
+    const fs0 = Math.round(cw / Math.max(parts[0].length * 0.55, 1.2));
+    const fs1 = Math.round(cw / Math.max(parts[1].length * 0.55, 1.2));
+    ctx.fillStyle = fg; ctx.shadowColor = fg; ctx.shadowBlur = 8;
+    ctx.font = `900 ${fs0}px system-ui, sans-serif`; ctx.fillText(parts[0].toUpperCase(), cw / 2, cy - 22);
+    ctx.font = `900 ${fs1}px system-ui, sans-serif`; ctx.fillText(parts[1].toUpperCase(), cw / 2, cy + 22);
+    ctx.shadowBlur = 0;
+  }
+  ctx.strokeStyle = fg; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.3;
+  const lineOff = parts.length > 1 ? 52 : 38;
+  ctx.beginPath(); ctx.moveTo(12, cy - lineOff); ctx.lineTo(cw - 12, cy - lineOff); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(12, cy + lineOff); ctx.lineTo(cw - 12, cy + lineOff); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+// Color palette for graffiti tags — one recognizable color per brand
+const GRAFF_COLORS = {
+  THRASHER: '#e01206', 'ANTI HERO': '#ff5500', SPITFIRE: '#ff4400',
+  DGK: '#f5c518', BAKER: '#d4a420', HUF: '#eeeeee',
+  PALACE: '#9090ff', GIRL: '#ff66aa', REAL: '#c8c8c8',
+  POLAR: '#88aaff', ZERO: '#d0d0d0', CREATURE: '#cc2200',
+  'TOY MACHINE': '#ff6600', POWELL: '#c8a800', ELEMENT: '#7dcc4a',
+  'SANTA CRUZ': '#e01206', BIRDHOUSE: '#aaaaaa', 'PLAN B': '#d8d8d8',
+  INDEPENDENT: '#cc0000', EMERICA: '#eeeeee', 'NB NUMERIC': '#cc0000',
+  VANS: '#dddddd', 'NIKE SB': '#ff4400', 'DC SHOES': '#2233aa',
+  LAKAI: '#888888', ETNIES: '#cc2200', THUNDER: '#3388ff',
+};
+
+/**
+ * Creates a graffiti wall panel mesh with canvas-drawn brand logos.
+ * @param {string[]|{label,color}[]} brands  Brand names or {label,color} objects
+ * @param {number} panelW  Width in world units
+ * @param {number} panelH  Height in world units
+ */
+export function makeGraffitiWall(brands = [], panelW = 9, panelH = 5) {
+  if (typeof document === 'undefined') return new THREE.Group();
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256;
+  const x = cv.getContext('2d');
+  // concrete base with subtle texture
+  x.fillStyle = '#ccc8c0'; x.fillRect(0, 0, 512, 256);
+  x.globalAlpha = 0.05;
+  for (let i = 0; i < 500; i++) {
+    const v = 150 + Math.random() * 60;
+    x.fillStyle = `rgb(${v},${v - 3},${v - 8})`;
+    x.fillRect(Math.random() * 512, Math.random() * 256, Math.random() * 4 + 1, Math.random() * 3 + 1);
+  }
+  x.globalAlpha = 1;
+  // deterministic per-wall seeded random
+  let _s = 91;
+  const sr = () => { _s = (_s * 16807) % 2147483647; return (_s - 1) / 2147483646; };
+  const tags = brands.length ? brands : Object.keys(GRAFF_COLORS).slice(0, 8);
+  const display = tags.slice(0, 8);
+  const cols = 4, cellW = 512 / cols, cellH = 256 / 2;
+  display.forEach((b, idx) => {
+    const label = typeof b === 'string' ? b : b.label;
+    const color = (typeof b === 'object' && b.color) ? b.color : (GRAFF_COLORS[label.toUpperCase()] || '#ffffff');
+    const col = idx % cols, row = Math.floor(idx / cols);
+    const cx = col * cellW + cellW * (0.18 + sr() * 0.64);
+    const cy = row * cellH + cellH * (0.22 + sr() * 0.56);
+    const fs = Math.round(26 + sr() * 22);
+    const rot = (sr() - 0.5) * 0.28;
+    x.save();
+    x.translate(Math.min(cx, 492), Math.min(cy, 238)); x.rotate(rot);
+    x.shadowColor = color; x.shadowBlur = 12;
+    x.font = `900 ${fs}px system-ui, sans-serif`;
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.strokeStyle = 'rgba(255,255,255,0.78)'; x.lineWidth = fs * 0.22; x.lineJoin = 'round';
+    x.strokeText(label.toUpperCase(), 0, 0);
+    x.fillStyle = color; x.fillText(label.toUpperCase(), 0, 0);
+    if (sr() > 0.48) {
+      x.shadowBlur = 0; x.fillStyle = color; x.globalAlpha = 0.65;
+      x.beginPath(); x.ellipse((sr() - 0.5) * fs * 0.5, fs * 0.65, 2.2, sr() * 12 + 5, 0, 0, Math.PI * 2); x.fill();
+      x.globalAlpha = 1;
+    }
+    x.restore();
+  });
+  x.globalAlpha = 0.32; x.font = 'italic 700 14px system-ui, sans-serif';
+  x.textAlign = 'right'; x.textBaseline = 'bottom'; x.fillStyle = '#666';
+  x.fillText('StreetSesh', 508, 252); x.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  const panel = new THREE.Mesh(
+    new THREE.BoxGeometry(panelW, panelH, 0.06),
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92, metalness: 0 })
+  );
+  panel.castShadow = false; panel.receiveShadow = true; panel.position.y = panelH / 2;
+  const g = new THREE.Group(); g.add(panel); return g;
+}
+
 export function makeAvatar(o = {}) {
-  const c = { skin: SKIN_TONES[3], hoodie: HOODIES[0], pants: '#3a4150', shoes: '#f4f4f4', hat: '#2b2f38', ...o };
+  const c = { skin: SKIN_TONES[3], hoodie: HOODIES[0], pants: '#3a4150', shoes: '#f4f4f4', hat: '#2b2f38', hoodieLabel: null, shoeBrand: null, ...o };
   const mats = {
     skin: new THREE.MeshPhysicalMaterial({ color: c.skin, roughness: 0.55, sheen: 0.25, sheenColor: new THREE.Color('#ffd9c2') }),
     hoodie: fabric(c.hoodie), pants: fabric(c.pants), hat: fabric(c.hat),
@@ -116,6 +274,43 @@ export function makeAvatar(o = {}) {
   };
   const armL = mkArm(1), armR = mkArm(-1);
 
+  // Hoodie brand patch — small chest label showing the apparel brand
+  if (c.hoodieLabel) {
+    const brand = APPAREL_BRANDS.find(b => b.id === c.hoodieLabel);
+    const pc = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+    if (pc) {
+      pc.width = 128; pc.height = 56;
+      const px = pc.getContext('2d');
+      const bg = brand ? brand.bg : '#1a1a1a';
+      const fg = brand ? brand.fg : '#ffffff';
+      const lbl = (brand ? brand.label : c.hoodieLabel).toUpperCase();
+      px.fillStyle = bg; px.beginPath(); px.roundRect(3, 3, 122, 50, 7); px.fill();
+      px.fillStyle = fg;
+      px.font = `900 ${lbl.length > 8 ? 14 : lbl.length > 5 ? 17 : 21}px system-ui, sans-serif`;
+      px.textAlign = 'center'; px.textBaseline = 'middle';
+      px.fillText(lbl, 64, 28);
+      const pt = new THREE.CanvasTexture(pc); pt.colorSpace = THREE.SRGBColorSpace;
+      const patch = new THREE.Mesh(
+        new THREE.BoxGeometry(0.135, 0.057, 0.006),
+        new THREE.MeshStandardMaterial({ map: pt, roughness: 0.7, transparent: true })
+      );
+      patch.position.set(0, 0.22, 0.148);
+      torso.add(patch);
+    }
+  }
+
+  // Shoe brand side stripe — colored accent stripe on outer shoe face
+  if (c.shoeBrand) {
+    const sb = SHOE_BRANDS.find(b => b.id === c.shoeBrand);
+    const col = sb ? sb.accent : '#1a1a1a';
+    const stripeMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.55 });
+    for (const [leg, side] of [[legL, 1], [legR, -1]]) {
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.036, 0.15), stripeMat);
+      stripe.position.set(0.057 * side, -0.425, 0.06);
+      leg.userData.knee.add(stripe);
+    }
+  }
+
   root.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
   const setColors = (n) => { for (const k in n) if (mats[k]) mats[k].color.set(n[k]); };
   return { group: root, parts: { hips, torso, head, legL, legR, armL, armR }, setColors, mats };
@@ -123,7 +318,7 @@ export function makeAvatar(o = {}) {
 
 /* ---------------- Skateboard ---------------- */
 export function makeBoard(o = {}) {
-  const c = { deck: DECKS[0], grip: '#1a1b1e', wheels: '#f6efe0', trucks: '#aab2bc', ...o };
+  const c = { deck: DECKS[0], grip: '#1a1b1e', wheels: '#f6efe0', trucks: '#aab2bc', brand: null, ...o };
   const g = new THREE.Group(); g.name = 'Skateboard';
   const deckMat = new THREE.MeshStandardMaterial({ color: c.deck, roughness: 0.55 });
   const wood = new THREE.MeshStandardMaterial({ color: '#d8b98a', roughness: 0.7 });
@@ -133,10 +328,15 @@ export function makeBoard(o = {}) {
   let gfxMat = deckMat;
   const drawDeck = (color) => {
     if (!cv) return; cv.width = 128; cv.height = 512; const x = cv.getContext('2d');
-    x.fillStyle = color; x.fillRect(0, 0, 128, 512);
-    x.fillStyle = 'rgba(255,255,255,0.9)'; for (let i = 0; i < 5; i++) x.fillRect(0, 150 + i * 22, 128, 9);
-    x.fillStyle = 'rgba(0,0,0,0.25)'; x.beginPath(); x.arc(64, 360, 34, 0, Math.PI * 2); x.fill();
-    x.save(); x.translate(64, 360); x.rotate(-Math.PI / 2); x.fillStyle = '#fff'; x.font = '900 34px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('SC', 0, 2); x.restore();
+    const brand = c.brand ? DECK_BRANDS.find(b => b.id === c.brand) : null;
+    if (brand) {
+      paintDeckBrand(x, brand);
+    } else {
+      x.fillStyle = color; x.fillRect(0, 0, 128, 512);
+      x.fillStyle = 'rgba(255,255,255,0.9)'; for (let i = 0; i < 5; i++) x.fillRect(0, 150 + i * 22, 128, 9);
+      x.fillStyle = 'rgba(0,0,0,0.25)'; x.beginPath(); x.arc(64, 360, 34, 0, Math.PI * 2); x.fill();
+      x.save(); x.translate(64, 360); x.rotate(-Math.PI / 2); x.fillStyle = '#fff'; x.font = '900 34px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('SC', 0, 2); x.restore();
+    }
     if (gfxMat.map) gfxMat.map.needsUpdate = true;
   };
   if (cv) { drawDeck(c.deck); const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; gfxMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 }); }
