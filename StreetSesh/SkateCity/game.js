@@ -1674,6 +1674,15 @@ document.querySelectorAll('[data-key]').forEach((b) => {
 /* ============================== onboarding ============================== */
 const saved = (() => { try { return JSON.parse(localStorage.getItem('skatecity.profile') || 'null'); } catch { return null; } })();
 const profile = saved || { username: 'rookie_' + Math.floor(rand(100, 999)), skin: 3, hoodie: 0, deck: 0 };
+
+// iOS app passes avatar as direct hex colors via query params — skip the in-game onboarding card
+const _q = new URLSearchParams(location.search);
+const _appSkin    = _q.get('skin');
+const _appHoodie  = _q.get('hoodie');
+const _appDeck    = _q.get('deck');
+const _appUser    = _q.get('username');
+const _fromApp    = !!(_appSkin || _appHoodie || _appDeck || _appUser);
+
 function swatches(id, list, keyName) {
   const el = $(id); el.innerHTML = '';
   list.forEach((c, k) => {
@@ -1684,17 +1693,23 @@ function swatches(id, list, keyName) {
   });
 }
 function applyProfile() {
-  avatar.setColors({ skin: A.SKIN_TONES[profile.skin], hoodie: A.HOODIES[profile.hoodie] });
-  board.userData.setDeck(A.DECKS[profile.deck]);
+  // Honor iOS hex colors when launched from the StreetSesh app; fall back to palette indices
+  avatar.setColors({
+    skin:   _appSkin   || A.SKIN_TONES[profile.skin],
+    hoodie: _appHoodie || A.HOODIES[profile.hoodie],
+  });
+  if (_appDeck) board.userData.setDeck(_appDeck);
+  else board.userData.setDeck(A.DECKS[profile.deck]);
 }
 swatches('sw-skin', A.SKIN_TONES, 'skin'); swatches('sw-hoodie', A.HOODIES, 'hoodie'); swatches('sw-deck', A.DECKS, 'deck');
-$('username').value = profile.username; applyProfile();
+$('username').value = _appUser || profile.username; applyProfile();
 $('onboard').addEventListener('submit', (e) => {
   e.preventDefault();
   const name = ($('username').value || '').trim().replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 18) || profile.username;
   profile.username = name; state.username = name;
   try { localStorage.setItem('skatecity.profile', JSON.stringify(profile)); } catch {}
-  $('uname').textContent = '@' + name; $('avatar-chip').textContent = name[0].toUpperCase(); $('avatar-chip').style.background = A.HOODIES[profile.hoodie];
+  const chipColor = _appHoodie || A.HOODIES[profile.hoodie];
+  $('uname').textContent = '@' + name; $('avatar-chip').textContent = name[0].toUpperCase(); $('avatar-chip').style.background = chipColor;
   $('intro').hidden = true; $('hud').hidden = false;
   state.started = true; audio.start(); missions.render();
   cam.yaw = P.yaw; cam.userYaw = 0;
@@ -1715,6 +1730,20 @@ $('gfx-btn').addEventListener('click', () => { const k = Object.keys(QUALITY); s
 placePlayer(V3(-62.8, 0, -66), 0);
 missions.render();
 $('loading').hidden = true; $('golabel').hidden = false; $('go').disabled = false;
+
+// When launched from the StreetSesh iOS app, skip the onboarding card entirely
+if (_fromApp) {
+  const name = (_appUser || '').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 18) || profile.username;
+  state.username = name;
+  $('uname').textContent = '@' + name;
+  $('avatar-chip').textContent = name[0].toUpperCase();
+  $('avatar-chip').style.background = _appHoodie || A.HOODIES[profile.hoodie];
+  $('intro').hidden = true; $('hud').hidden = false;
+  state.started = true; audio.start(); missions.render();
+  cam.yaw = P.yaw; cam.userYaw = 0;
+  hud.toast('Press Q to drop your board 🛹');
+  setTimeout(() => feed('@' + name + ' just dropped into SkateCity'), 2200);
+}
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);

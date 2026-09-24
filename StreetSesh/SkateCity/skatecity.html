@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>SkateCity</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,6 +28,8 @@
   kbd { font-family: var(--ui); font-weight: 800; font-size: 11px; min-width: 22px; height: 22px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 7px; background: var(--ink); color: #fff; box-sizing: border-box; }
   button { font-family: inherit; cursor: pointer; }
   button:focus-visible, input:focus-visible { outline: 3px solid var(--route); outline-offset: 2px; }
+
+  /* ---------- intro / onboarding ---------- */
   #intro { position: fixed; inset: 0; display: flex; align-items: center; padding: calc(24px + var(--safe-t)) 24px calc(24px + var(--safe-b)); pointer-events: none; background: linear-gradient(90deg, rgba(241, 238, 232, 0.92) 0%, rgba(241, 238, 232, 0.55) 38%, rgba(241, 238, 232, 0) 62%); }
   #onboard { pointer-events: auto; width: min(400px, 100%); padding: 26px 24px 22px; border-radius: 24px; display: grid; gap: 18px; }
   .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); display: flex; align-items: center; gap: 8px; }
@@ -48,6 +50,8 @@
   #go:disabled { opacity: 0.5; cursor: progress; }
   #go:not(:disabled):hover { background: #000; }
   .fine { font-size: 12px; color: var(--ink-3); margin: -6px 0 0; line-height: 1.45; }
+
+  /* ---------- HUD ---------- */
   #hud { position: fixed; inset: 0; pointer-events: none; }
   #hud > * { pointer-events: auto; }
   .top-left { position: absolute; top: calc(14px + var(--safe-t)); left: 16px; display: grid; gap: 10px; width: min(300px, calc(100vw - 220px)); }
@@ -69,6 +73,7 @@
   #m-reward { color: #b77900; }
   #m-skip { margin-left: auto; background: none; border: 0; color: var(--ink-3); font-weight: 700; font-size: 12px; padding: 2px 0; }
   #m-skip:hover { color: var(--ink); }
+
   .top-right { position: absolute; top: calc(14px + var(--safe-t)); right: 16px; display: grid; justify-items: end; gap: 8px; }
   .mapwrap { position: relative; width: 168px; height: 168px; border-radius: 50%; padding: 4px; }
   #minimap { width: 100%; height: 100%; border-radius: 50%; display: block; }
@@ -80,18 +85,22 @@
   .scorecard { border-radius: 14px; padding: 8px 12px; text-align: right; }
   .scorecard small { display: block; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; color: var(--ink-3); }
   #score { font-family: var(--display); font-size: 20px; font-variant-numeric: tabular-nums; }
+
   #feed { position: absolute; top: calc(14px + var(--safe-t)); left: 50%; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(360px, calc(100vw - 520px)); }
   .feed-item { font-size: 12.5px; font-weight: 700; padding: 6px 12px 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.78); box-shadow: 0 2px 10px rgba(29,36,51,0.1); display: flex; gap: 8px; align-items: center; transition: opacity .6s; white-space: nowrap; }
   .feed-item::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #5b6cff; }
   .feed-item.fade { opacity: 0; }
+
   .bottom-left { position: absolute; left: 16px; bottom: calc(16px + var(--safe-b)); border-radius: var(--r); padding: 10px 14px; display: flex; align-items: center; gap: 14px; }
   #speed { font-family: var(--display); font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; min-width: 2ch; }
   .speed small { font-size: 10px; font-weight: 800; letter-spacing: 0.1em; color: var(--ink-3); display: block; }
   #mode { font-weight: 800; font-size: 13px; }
   .popbar { width: 90px; height: 5px; border-radius: 3px; background: rgba(29,36,51,0.1); overflow: hidden; margin-top: 5px; }
   #pop { height: 100%; background: var(--coral); transform-origin: left; transform: scaleX(0); }
+
   #prompt { position: absolute; right: 16px; bottom: calc(16px + var(--safe-b)); display: grid; gap: 8px; justify-items: end; pointer-events: none; }
   .pill { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border-radius: 999px; background: var(--glass); box-shadow: var(--shadow); font-weight: 700; font-size: 13.5px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+
   #combo { position: absolute; left: 50%; bottom: calc(118px + var(--safe-b)); transform: translate(-50%, 8px); text-align: center; opacity: 0; transition: opacity .15s, transform .15s; pointer-events: none; width: min(640px, 92vw); }
   #combo.show { opacity: 1; transform: translate(-50%, 0); }
   #combo .parts { font-weight: 800; font-size: 15px; color: var(--ink); text-shadow: 0 1px 0 #fff, 0 0 12px rgba(255,255,255,0.9); text-wrap: balance; }
@@ -111,6 +120,8 @@
   .toast.good { background: var(--good); } .toast.bad { background: #b93a3e; }
   .toast.out { opacity: 0; transform: translateY(6px); }
   #rideinfo { position: absolute; top: calc(70px + var(--safe-t)); left: 50%; transform: translateX(-50%); background: #1d2433; color: #ffd166; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 13px; box-shadow: var(--shadow); }
+
+  /* ---------- help ---------- */
   #help { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(29,36,51,0.28); padding: 16px; z-index: 5; }
   .sheet { width: min(760px, 100%); max-height: calc(100% - 32px); overflow: auto; border-radius: 22px; padding: 22px 24px; background: #fff; box-shadow: var(--shadow); }
   .sheet header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -120,6 +131,8 @@
   .sheet dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 10px; font-size: 13px; align-items: center; }
   .sheet dt { display: flex; gap: 3px; } .sheet dd { margin: 0; color: var(--ink-2); }
   #help-close { border: 0; background: #f0f1f3; border-radius: 999px; padding: 8px 14px; font-weight: 800; }
+
+  /* ---------- touch controls ---------- */
   .touchpad { display: none; }
   body.touch .touchpad { display: block; }
   body.touch .bottom-left { bottom: auto; top: calc(14px + var(--safe-t)); left: auto; right: 196px; padding: 8px 12px; }
@@ -138,7 +151,6 @@
     #onboard { gap: 14px; padding: 20px 18px; }
     .mapwrap { width: 124px; height: 124px; }
     .top-left { width: calc(100vw - 172px); }
-    .mission #m-desc { font-size: 12px; }
     body.touch .bottom-left { right: 150px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -179,7 +191,9 @@
       <div class="foot"><span id="m-prog"></span><span id="m-reward"></span><button id="m-skip" type="button">Skip</button></div>
     </section>
   </div>
+
   <div id="feed"></div>
+
   <div class="top-right">
     <div class="mapwrap glass"><canvas id="minimap" width="320" height="320"></canvas><div id="compass"><b>N</b></div></div>
     <div class="scorecard glass"><small>SCORE</small><span id="score">0</span></div>
@@ -187,20 +201,23 @@
       <button id="time-btn" class="glass" type="button" title="Time of day">Golden hour</button>
       <button id="gfx-btn" class="glass" type="button" title="Graphics quality">High</button>
       <button id="radio-btn" class="glass" type="button" title="SeshFM radio (M)">SeshFM</button>
-      <button id="help-btn" class="glass" type="button" title="Controls (Tab)">?</button>
+      <button id="help-btn" class="glass" type="button" title="Controls">?</button>
     </div>
   </div>
+
   <div id="rideinfo" hidden></div>
   <div id="banner"></div>
   <div id="landed"></div>
   <div id="combo"></div>
   <div id="balance"><div id="needle"></div></div>
   <div id="toasts"></div>
+
   <div class="bottom-left glass">
     <div class="speed"><span id="speed">0</span><small>KM/H</small></div>
     <div><div id="mode">On foot</div><div class="popbar"><div id="pop"></div></div></div>
   </div>
   <div id="prompt"></div>
+
   <div class="touchpad">
     <div id="stick"><div id="knob"></div></div>
     <div class="pads">
@@ -269,7 +286,7 @@
   "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
 } }
 </script>
-<script type="module" src="assets.js"></script>
 <script type="module" src="game.js"></script>
+
 </body>
 </html>
