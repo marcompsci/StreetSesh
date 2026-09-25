@@ -216,7 +216,7 @@ struct SkateCityExploreView: View {
 
                 // Skate spots
                 if filterMode != .shops {
-                    ForEach(SKMockData.realSpots + SKMockData.fresnoSpots) { spot in
+                    ForEach(SKMockData.realSpots + SKMockData.fresnoSpots + SKMockData.laSpots) { spot in
                         Annotation(spot.name, coordinate: spot.coordinate, anchor: .bottom) {
                             spotPin(spot)
                                 .onTapGesture { selectedSpot = spot }
@@ -544,7 +544,7 @@ struct SkateCityExploreView: View {
     private var spotsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             SKSectionHeader(title: "SKATE SPOTS")
-            ForEach(SKMockData.realSpots + SKMockData.fresnoSpots) { spot in
+            ForEach(SKMockData.realSpots + SKMockData.fresnoSpots + SKMockData.laSpots) { spot in
                 Button { selectedSpot = spot } label: { spotRow(spot) }
             }
         }
