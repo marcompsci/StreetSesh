@@ -39,6 +39,25 @@ final class BustVote {
     }
 }
 
+// MARK: - Spot Photo Report
+
+@Model
+final class SpotPhotoReport {
+    var spotName: String
+    var photoData: Data
+    var note: String
+    var submittedBy: String
+    var submittedAt: Date
+
+    init(spotName: String, photoData: Data, note: String, submittedBy: String) {
+        self.spotName = spotName
+        self.photoData = photoData
+        self.note = note
+        self.submittedBy = submittedBy
+        self.submittedAt = Date()
+    }
+}
+
 // MARK: - Bust Vote Engine
 
 enum BustVoteEngine {

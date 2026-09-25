@@ -3,7 +3,10 @@ import SwiftUI
 struct SkateCitySessionsView: View {
     @EnvironmentObject private var state: SkateCityAppState
     @State private var showCreateSession = false
-    @State private var showPostClip     = false
+    @State private var showPostClip      = false
+    @State private var showComments: SkateClip? = nil
+    @State private var showNativeShare   = false
+    @State private var shareItems: [Any] = []
 
     var body: some View {
         NavigationStack {
@@ -37,6 +40,18 @@ struct SkateCitySessionsView: View {
                 .presentationDetents([.large])
                 .presentationBackground(Color.skDark)
         }
+        .sheet(item: $showComments) { clip in
+            SKCommentSheet(clip: clip)
+                .environmentObject(state)
+                .presentationDetents([.large])
+                .presentationBackground(Color.skDark)
+        }
+        #if os(iOS)
+        .sheet(isPresented: $showNativeShare) {
+            ActivityView(items: shareItems)
+                .presentationDetents([.medium, .large])
+        }
+        #endif
     }
 
     // MARK: - Header
@@ -250,11 +265,10 @@ struct SkateCitySessionsView: View {
                 }
             }
 
-            // Actions row
+            // Actions row — like · comment · share
             HStack(spacing: 20) {
-                Button {
-                    state.toggleLike(clipID: clip.id)
-                } label: {
+                // Like
+                Button { state.toggleLike(clipID: clip.id) } label: {
                     HStack(spacing: 5) {
                         Image(systemName: clip.isLiked ? "heart.fill" : "heart")
                             .font(.subheadline)
@@ -264,18 +278,216 @@ struct SkateCitySessionsView: View {
                             .foregroundStyle(clip.isLiked ? .skCoral : .skSub)
                     }
                 }
-                HStack(spacing: 5) {
-                    Image(systemName: "bubble.right")
-                        .font(.subheadline)
-                        .foregroundStyle(.skSub)
-                    Text("\(clip.comments)")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.skSub)
+                .buttonStyle(.plain)
+
+                // Comment — taps open comment sheet
+                Button { showComments = clip } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "bubble.right")
+                            .font(.subheadline)
+                            .foregroundStyle(.skSub)
+                        Text("\(clip.comments)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.skSub)
+                    }
                 }
+                .buttonStyle(.plain)
+
                 Spacer()
+
+                // Share → Instagram Stories or native share
+                Button { shareClip(clip) } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.subheadline)
+                        Text("Share")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(.skSub)
+                }
+                .buttonStyle(.plain)
             }
         }
         .skCard()
+    }
+
+    // MARK: - Share helper
+
+    private func shareClip(_ clip: SkateClip) {
+        #if os(iOS)
+        let igStoriesURL = URL(string: "instagram-stories://share")!
+        let igAppURL     = URL(string: "instagram://app")!
+
+        let pasteboardItems: [[String: Any]] = [[
+            "com.instagram.sharedSticker.contentURL":        "https://streetsesh.app",
+            "com.instagram.sharedSticker.backgroundTopColor":    "#0D1117",
+            "com.instagram.sharedSticker.backgroundBottomColor": "#2D1B4E"
+        ]]
+
+        if UIApplication.shared.canOpenURL(igStoriesURL) {
+            UIPasteboard.general.setItems(pasteboardItems,
+                                          options: [.expirationDate: Date().addingTimeInterval(300)])
+            UIApplication.shared.open(igStoriesURL)
+        } else if UIApplication.shared.canOpenURL(igAppURL) {
+            UIApplication.shared.open(igAppURL)
+        } else {
+            let text = "🛹 \(clip.challengeTitle) · \(clip.trickTags.joined(separator: " · "))\nvia @StreetSesh — streetsesh.app"
+            shareItems = [text]
+            showNativeShare = true
+        }
+        #endif
+    }
+}
+
+// MARK: - UIActivityViewController wrapper
+
+#if os(iOS)
+struct ActivityView: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+#endif
+
+// MARK: - Comment Sheet
+
+struct SKCommentSheet: View {
+    let clip: SkateClip
+    @EnvironmentObject private var state: SkateCityAppState
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var newComment = ""
+
+    private var comments: [SKComment] { state.comments(for: clip.id) }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.skDark.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    // Clip header
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(clip.challengeTitle)
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.skText)
+                            Text(clip.creatorHandle)
+                                .font(.caption2)
+                                .foregroundStyle(.skSub)
+                        }
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Image(systemName: clip.isLiked ? "heart.fill" : "heart")
+                                .foregroundStyle(clip.isLiked ? .skCoral : .skSub)
+                            Text("\(clip.likes)")
+                                .foregroundStyle(.skSub)
+                        }
+                        .font(.caption)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color.skCard)
+
+                    Divider().background(Color.skBorder)
+
+                    // Comments list
+                    if comments.isEmpty {
+                        Spacer()
+                        VStack(spacing: 10) {
+                            Image(systemName: "bubble.right")
+                                .font(.system(size: 40))
+                                .foregroundStyle(.skSub)
+                            Text("No comments yet.\nBe the first to drop one.")
+                                .font(.subheadline)
+                                .foregroundStyle(.skSub)
+                                .multilineTextAlignment(.center)
+                        }
+                        Spacer()
+                    } else {
+                        ScrollView(showsIndicators: false) {
+                            LazyVStack(alignment: .leading, spacing: 0) {
+                                ForEach(comments) { comment in
+                                    commentRow(comment)
+                                    Divider().background(Color.skBorder).padding(.leading, 56)
+                                }
+                            }
+                            .padding(.top, 4)
+                        }
+                    }
+
+                    Divider().background(Color.skBorder)
+
+                    // Input bar
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle().fill(Color.skMuted).frame(width: 34, height: 34)
+                            Text(String(state.profile.displayName.prefix(1)))
+                                .font(.system(size: 13, weight: .black))
+                                .foregroundStyle(.skLime)
+                        }
+                        TextField("Add a comment…", text: $newComment)
+                            .foregroundStyle(.skText)
+                            .submitLabel(.send)
+                            .onSubmit { postComment() }
+
+                        Button { postComment() } label: {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(newComment.isEmpty ? .skSub : .skLime)
+                        }
+                        .disabled(newComment.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.skCard)
+                }
+            }
+            .navigationTitle("Comments")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbarColorScheme(.dark)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }.foregroundStyle(.skLime)
+                }
+            }
+        }
+    }
+
+    private func commentRow(_ comment: SKComment) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle().fill(Color.skMuted).frame(width: 34, height: 34)
+                Text(String(comment.author.prefix(1)))
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(.skLime)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(comment.handle)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.skText)
+                    Text(comment.createdAt.skRelative)
+                        .font(.caption2)
+                        .foregroundStyle(.skSub)
+                }
+                Text(comment.text)
+                    .font(.subheadline)
+                    .foregroundStyle(.skText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private func postComment() {
+        state.addComment(to: clip.id, text: newComment)
+        newComment = ""
     }
 }
 

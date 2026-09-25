@@ -150,6 +150,17 @@ struct SkateClip: Identifiable {
     var isLiked: Bool
 }
 
+// MARK: - Clip Comment
+
+struct SKComment: Identifiable {
+    let id: UUID
+    let clipID: UUID
+    let author: String
+    let handle: String
+    let text: String
+    let createdAt: Date
+}
+
 // MARK: - Crew Session
 
 struct CrewSession: Identifiable {

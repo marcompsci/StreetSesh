@@ -10,6 +10,7 @@ final class SkateCityAppState: ObservableObject {
     @Published var sessions: [CrewSession]
     @Published var savedSpotIDs: Set<UUID> = []
     @Published var hasSynced = false
+    @Published var clipComments: [UUID: [SKComment]] = [:]
 
     init() {
         self.profile = UserProfile(
@@ -100,6 +101,27 @@ final class SkateCityAppState: ObservableObject {
 
     func addSession(_ session: CrewSession) {
         sessions.insert(session, at: 0)
+    }
+
+    func addComment(to clipID: UUID, text: String) {
+        guard let idx = clips.firstIndex(where: { $0.id == clipID }),
+              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let comment = SKComment(
+            id: UUID(),
+            clipID: clipID,
+            author: profile.displayName,
+            handle: profile.handle,
+            text: text.trimmingCharacters(in: .whitespacesAndNewlines),
+            createdAt: Date()
+        )
+        var existing = clipComments[clipID] ?? []
+        existing.append(comment)
+        clipComments[clipID] = existing
+        clips[idx].comments += 1
+    }
+
+    func comments(for clipID: UUID) -> [SKComment] {
+        clipComments[clipID] ?? []
     }
 
     func earnXP(_ amount: Int) {

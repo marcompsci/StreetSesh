@@ -14,6 +14,7 @@ struct StreetSeshApp: App {
             Trophy.self,
             SpotClip.self,
             BustVote.self,
+            SpotPhotoReport.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {

@@ -11,7 +11,8 @@ struct SpotDetailSheet: View {
     @Query private var clips: [SpotClip]
     @Query private var users: [AppUser]
 
-    @State private var showAddClip = false
+    @State private var showAddClip    = false
+    @State private var showPhotoReport = false
 
     private var currentUsername: String? { users.first?.username }
 
@@ -61,6 +62,7 @@ struct SpotDetailSheet: View {
                 if uniqueVisitorCount > 0 || myVisitCount > 0 { localsRow }
                 if !activeSessions.isEmpty { liveSection }
                 bustVoteSection
+                photoReportSection
                 clipsSection
             }
             .padding()
@@ -70,6 +72,13 @@ struct SpotDetailSheet: View {
                 .presentationDetents([.medium])
                 .presentationBackground(Color.black)
         }
+        #if os(iOS)
+        .sheet(isPresented: $showPhotoReport) {
+            SpotPhotoReportSheet(spotName: spot.name)
+                .presentationDetents([.large])
+                .presentationBackground(Color.black)
+        }
+        #endif
     }
 
     // MARK: - Header
@@ -222,6 +231,40 @@ struct SpotDetailSheet: View {
             }
             .frame(maxWidth: .infinity)
         }
+    }
+
+    // MARK: - Photo Report
+
+    private var photoReportSection: some View {
+        Button { showPhotoReport = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.14))
+                        .frame(width: 42, height: 42)
+                    Image(systemName: "camera.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Report a Spot Update")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text("Take a photo to flag changes — bust status, obstacles, access.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .background(Color.white.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Clips

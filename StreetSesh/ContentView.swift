@@ -15,6 +15,7 @@ struct ContentView: View {
         }
         .onAppear {
             SampleData.seed(into: modelContext)
+            SampleData.seedFresnoSpots(into: modelContext)
             SampleData.seedHuntScores(into: modelContext)
             SampleData.seedCheckIns(into: modelContext)
             SampleData.seedClips(into: modelContext)

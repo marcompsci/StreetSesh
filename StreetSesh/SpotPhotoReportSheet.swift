@@ -1,8 +1,12 @@
 import SwiftUI
 import SwiftData
+#if os(iOS)
 import UIKit
+#endif
 
 // MARK: - UIImagePickerController wrapper
+
+#if os(iOS)
 
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var image: UIImage?
@@ -218,3 +222,4 @@ struct SpotPhotoReportSheet: View {
         withAnimation(.spring(response: 0.4)) { submitted = true }
     }
 }
+#endif

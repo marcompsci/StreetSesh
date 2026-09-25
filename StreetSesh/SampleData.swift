@@ -52,6 +52,51 @@ struct SampleData {
         try? context.save()
     }
 
+    // Seeds Fresno spots separately so existing users get them without a DB reset
+    static func seedFresnoSpots(into context: ModelContext) {
+        let descriptor = FetchDescriptor<Spot>(predicate: #Predicate { $0.name == "Fresno City Hall Plaza" })
+        let count = (try? context.fetchCount(descriptor)) ?? 0
+        guard count == 0 else { return }
+
+        let spots: [(String, Double, Double, [String], BustStatus, FameTier, String)] = [
+            ("Fresno City Hall Plaza",          36.7358, -119.7870, ["Marble Ledge", "Stairs", "Rail"],      .green,  .iconic,    "Weekdays"),
+            ("Chukchansi Park Steps",           36.7370, -119.7881, ["Stairs", "Marble Gap", "Rail"],        .green,  .legendary, "Weekends"),
+            ("Fresno Convention Center Ledge",  36.7344, -119.7885, ["Ledge", "Stairs", "Flat"],             .yellow, .local,     "Evenings"),
+            ("County Hall of Records Marble",   36.7368, -119.7867, ["Marble Ledge", "Manual Pad"],          .green,  .local,     "Anytime"),
+            ("Fulton Mall Ledge Line",           36.7375, -119.7921, ["Concrete Ledge", "Curb"],             .green,  .local,     "Anytime"),
+            ("Federal Building Stairs",         36.7359, -119.7895, ["12-Stair", "Handrail", "Gap"],         .yellow, .iconic,    "Weekdays"),
+            ("Bitwise South Stadium Plaza",     36.7340, -119.7905, ["Fresh Concrete", "Curb"],              .green,  .local,     "Anytime"),
+            ("Fresno Water Tower Manual Pad",   36.7481, -119.7820, ["Manual Pad", "Flat"],                  .green,  .local,     "Anytime"),
+            ("Tower District Wishon Gap",       36.7698, -119.8005, ["Gap", "Manual Pad"],                   .green,  .local,     "Evenings"),
+            ("Fresno Art Museum Banks",         36.7700, -119.7981, ["Concrete Banks", "Ledge"],             .green,  .local,     "Mornings"),
+            ("Fresno City College Steps",       36.7463, -119.7789, ["Stairs", "Waxed Ledge", "Rail"],       .green,  .local,     "Weekdays"),
+            ("CSU Fresno Library Ledges",       36.8120, -119.7449, ["Marble Ledge", "Stairs"],              .green,  .iconic,    "Weekdays"),
+            ("Save Mart Center Steps",          36.8136, -119.7468, ["Wide Stairs", "Gap", "Handrail"],      .green,  .local,     "Weekends"),
+            ("Fashion Fair Hubba",              36.8137, -119.7902, ["Hubba Ledge", "Stairs"],               .yellow, .iconic,    "Weekdays"),
+            ("River Park Concrete Banks",       36.8369, -119.7735, ["Banks", "Ledge", "Curb"],              .green,  .local,     "Mornings"),
+            ("Woodward Park Ledges",            36.8393, -119.8213, ["Low Ledge", "Smooth Path"],            .green,  .local,     "Anytime"),
+            ("North Fresno Long Hubba",         36.8600, -119.8234, ["Long Hubba", "Stairs"],                .green,  .iconic,    "Weekdays"),
+            ("Fresno Pacific Brick Ledge",      36.7299, -119.7503, ["Brick Ledge", "Gap"],                  .green,  .local,     "Weekdays"),
+            ("Kings Canyon Manual Pad",         36.7340, -119.7497, ["Manual Pad", "Curb"],                  .green,  .local,     "Anytime"),
+            ("Calwa DIY Bank",                  36.7198, -119.7701, ["DIY Bank", "Concrete Wall"],           .green,  .hidden,    "Anytime"),
+        ]
+
+        for (name, lat, lng, obstacles, bust, fame, bestTime) in spots {
+            context.insert(Spot(
+                name: name,
+                latitude: lat,
+                longitude: lng,
+                obstacles: obstacles,
+                visibility: .public,
+                bustStatus: bust,
+                fameTier: fame,
+                bestTimeOfDay: bestTime
+            ))
+        }
+
+        try? context.save()
+    }
+
     static func seedHuntScores(into context: ModelContext) {
         let descriptor = FetchDescriptor<HuntScore>()
         let count = (try? context.fetchCount(descriptor)) ?? 0
