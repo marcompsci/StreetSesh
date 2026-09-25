@@ -20,6 +20,9 @@ struct SkateCityView: View {
             SkateCitySessionsView()
                 .tabItem { Label("Sessions", systemImage: "person.3.fill") }
 
+            LeaderboardView()
+                .tabItem { Label("Ranks", systemImage: "chart.bar.fill") }
+
             SkateCityProfileView()
                 .tabItem { Label("Profile", systemImage: "person.fill") }
         }

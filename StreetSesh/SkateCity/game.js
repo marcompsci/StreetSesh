@@ -693,6 +693,7 @@ world.addBody(playerBody);
 
 const rig = new THREE.Group(); scene.add(rig);
 const avatar = A.makeAvatar(); rig.add(avatar.group);
+const charLOD = new A.CharacterLODManager(avatar._model, camera);
 const board = A.makeBoard();
 const boardPivot = new THREE.Group(); boardPivot.position.y = 0.1; rig.add(boardPivot);
 board.position.y = -0.1; boardPivot.add(board);
@@ -1518,6 +1519,7 @@ function update(dt) {
 
   // ---- visuals
   syncPlayer(dt);
+  charLOD.update();
   for (const v of vehicles) v.sync(dt);
   npcSync();
   othersUpdate(dt);
@@ -1592,6 +1594,8 @@ function syncPlayer(dt) {
     if (g) { crouch = 0.35; bal = g.bal; leanZ = g.bal * 0.5; if (g.type === 'L' || g.type === 'R') boardPivot.rotation.y = Math.PI / 2 * 0.85; if (g.type === 'U') boardPivot.rotation.x = 0.18; if (g.type === 'D') boardPivot.rotation.x = -0.18; }
     if (P.manual) { const m = P.manual; boardPivot.rotation.x = m.nose ? 0.22 : -0.22; boardPivot.position.y = 0.1 + 0.07; leanX = (m.nose ? 0.25 : -0.3); bal = m.bal; leanZ = 0; }
     pose(avatar, { skate: true, crouch, leanX, leanZ, bal, grab, push: P.grounded && !P.manual ? P.pushT : 0 });
+    board.userData.spinWheels?.(P.grounded ? P.speed : 0, dt);
+    board.userData.tiltTrucks?.(P.lean || 0);
   } else if (P.mode === 'bail') {
     rig.rotation.set(0, P.visYaw, 0);
     const t = clamp(P.bail.t / 0.5, 0, 1);

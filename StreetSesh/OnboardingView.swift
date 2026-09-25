@@ -21,7 +21,7 @@ struct OnboardingView: View {
     @State private var avatarCat: AvatarCategory = .look
     @State private var boardCat: BoardCategory = .deck
 
-    private let totalSteps = 8
+    private let totalSteps = 6
 
     var body: some View {
         ZStack {
@@ -45,9 +45,7 @@ struct OnboardingView: View {
                 case 3: ageStep
                 case 4: stanceStep
                 case 5: styleStep
-                case 6: avatarStep
-                case 7: boardStep
-                case 8: readyStep
+                case 6: readyStep
                 default: splashStep
                 }
             }
@@ -115,10 +113,10 @@ extension OnboardingView {
             VStack(spacing: -8) {
                 Text("STREET")
                     .font(.system(size: 76, weight: .black))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.white)
                 Text("SESH")
                     .font(.system(size: 76, weight: .black))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(hex: "#CCFF40"))
             }
             .scaleEffect(logoScale)
             .opacity(logoOpacity)
@@ -127,7 +125,7 @@ extension OnboardingView {
                 .padding(.top, 12).opacity(logoOpacity)
             Spacer()
             Image(systemName: "skateboard.fill")
-                .font(.system(size: 64)).foregroundStyle(.orange.opacity(0.85))
+                .font(.system(size: 64)).foregroundStyle(Color(hex: "#CCFF40").opacity(0.88))
                 .opacity(logoOpacity).padding(.bottom, 60)
         }
         .onAppear {
@@ -567,16 +565,15 @@ extension OnboardingView {
         }
     }
 
-    // MARK: Ready (8)
+    // MARK: Ready (6)
 
     private var readyStep: some View {
         VStack(spacing: 0) {
             Spacer()
-            HStack(alignment: .bottom, spacing: 32) {
-                SkaterCharacterView(avatar: avatar, size: 160)
-                SkateboardTopView(board: board, scale: 0.62)
-            }
-            .padding(.bottom, 28)
+            Image(systemName: "skateboard.fill")
+                .font(.system(size: 72))
+                .foregroundStyle(.orange.opacity(0.88))
+                .padding(.bottom, 32)
             VStack(spacing: 6) {
                 Text("You're locked in.")
                     .font(.system(size: 38, weight: .black)).foregroundStyle(.white)

@@ -4,7 +4,6 @@ struct SkateCityProfileView: View {
     @EnvironmentObject private var state: SkateCityAppState
     @State private var showSettings   = false
     @State private var showCustomize  = false
-    @State private var selectedBoardIdx = 0
 
     private let badges: [SKProfileBadge] = [
         SKProfileBadge(id: "first",    name: "First Sesh",     icon: "flag.fill",       hex: "#CCFF40"),
@@ -23,7 +22,6 @@ struct SkateCityProfileView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         profileHero
                         statsRow
-                        boardLockerSection
                         badgesSection
                         settingsSection
                         Spacer(minLength: 40)
@@ -54,19 +52,12 @@ struct SkateCityProfileView: View {
 
     private var profileHero: some View {
         VStack(spacing: 0) {
-            ZStack(alignment: .bottom) {
-                // Background gradient
-                LinearGradient(
-                    colors: state.profile.homeTheme.wallGradient,
-                    startPoint: .top, endPoint: .bottom
-                )
-                .frame(height: 160)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                // Avatar
-                SKMiniSkater(style: state.profile.avatarStyle, size: 110)
-                    .padding(.bottom, 16)
-            }
+            LinearGradient(
+                colors: state.profile.homeTheme.wallGradient,
+                startPoint: .top, endPoint: .bottom
+            )
+            .frame(height: 110)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
 
             // Name row
             HStack(alignment: .top) {

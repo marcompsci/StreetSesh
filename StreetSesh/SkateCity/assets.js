@@ -2,6 +2,10 @@
 // Convention: every model faces +Z, origin sits on the ground (y = 0).
 // Used by the game at runtime and by export-glb.mjs to write .glb files.
 import * as THREE from 'three';
+import { makeAvatarModel, makeSkateboardModel, CharacterLODManager } from './avatar.js';
+
+// Re-export for game.js to access without a separate import
+export { CharacterLODManager };
 
 export const PALETTE = {
   land: '#e6e1d6', park: '#9fcb83', parkDark: '#8dbd72', water: '#4f9fd1',
@@ -224,135 +228,23 @@ export function makeGraffitiWall(brands = [], panelW = 9, panelH = 5) {
 }
 
 export function makeAvatar(o = {}) {
-  const c = { skin: SKIN_TONES[3], hoodie: HOODIES[0], pants: '#3a4150', shoes: '#f4f4f4', hat: '#2b2f38', hoodieLabel: null, shoeBrand: null, ...o };
-  const mats = {
-    skin: new THREE.MeshPhysicalMaterial({ color: c.skin, roughness: 0.55, sheen: 0.25, sheenColor: new THREE.Color('#ffd9c2') }),
-    hoodie: fabric(c.hoodie), pants: fabric(c.pants), hat: fabric(c.hat),
-    shoes: new THREE.MeshStandardMaterial({ color: c.shoes, roughness: 0.6 }),
-  };
-  const root = new THREE.Group(); root.name = 'Avatar';
-  const hips = new THREE.Group(); hips.position.y = 0.92; root.add(hips);
-
-  const mkLeg = (side) => {
-    const leg = new THREE.Group(); leg.position.set(0.1 * side, 0, 0);
-    const thigh = capsule(0.078, 0.34, mats.pants); thigh.position.y = -0.22; leg.add(thigh);
-    const knee = new THREE.Group(); knee.position.y = -0.44; leg.add(knee);
-    const shin = capsule(0.07, 0.3, mats.pants); shin.position.y = -0.2; knee.add(shin);
-    const shoe = mesh(new THREE.CapsuleGeometry(0.055, 0.17, 4, 10), mats.shoes); shoe.rotation.x = Math.PI / 2; shoe.scale.set(1.1, 1, 0.8); shoe.position.set(0, -0.42, 0.05); knee.add(shoe);
-    const sole = box(0.12, 0.03, 0.29, '#f2efe8', 0, -0.465, 0.05, { roughness: 0.8 }); knee.add(sole);
-    const cuff = mesh(new THREE.CylinderGeometry(0.078, 0.078, 0.05, 12), mats.pants); cuff.position.y = -0.34; knee.add(cuff);
-    leg.userData.knee = knee;
-    hips.add(leg); return leg;
-  };
-  const legL = mkLeg(1), legR = mkLeg(-1);
-
-  const torso = new THREE.Group(); hips.add(torso);
-  const chest = mesh(new THREE.CapsuleGeometry(0.17, 0.26, 4, 12), mats.hoodie);
-  chest.scale.set(1.12, 1, 0.72); chest.position.y = 0.3; torso.add(chest);
-  const pocket = box(0.2, 0.08, 0.02, mats.hoodie, 0, 0.18, 0.13); torso.add(pocket);
-  for (const s of [-1, 1]) { const str = cyl(0.007, 0.007, 0.14, '#f4f1ea', 5); str.position.set(0.035 * s, 0.47, 0.13); torso.add(str); }
-  const hem = mesh(new THREE.TorusGeometry(0.18, 0.025, 6, 18), mats.hoodie); hem.rotation.x = Math.PI / 2; hem.scale.set(1.1, 0.72, 1); hem.position.y = 0.06; torso.add(hem);
-  const hood = mesh(new THREE.TorusGeometry(0.09, 0.045, 8, 14), mats.hoodie); hood.position.set(0, 0.58, -0.07); hood.rotation.x = 1.1; torso.add(hood);
-
-  const head = new THREE.Group(); head.position.y = 0.72; torso.add(head);
-  const neck = cyl(0.05, 0.055, 0.1, mats.skin); neck.position.y = -0.1; head.add(neck);
-  const skull = mesh(new THREE.SphereGeometry(0.125, 16, 12), mats.skin); skull.scale.set(0.95, 1.08, 1); head.add(skull);
-  const beanie = mesh(new THREE.SphereGeometry(0.132, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), mats.hat); beanie.position.y = 0.02; head.add(beanie);
-  const cuff = mesh(new THREE.CylinderGeometry(0.134, 0.134, 0.045, 16), mats.hat); cuff.position.y = 0.03; head.add(cuff);
-  for (const s of [-1, 1]) { const e = box(0.022, 0.03, 0.01, '#1b1b1f', 0.045 * s, -0.005, 0.118); head.add(e); }
-
-  const mkArm = (side) => {
-    const arm = new THREE.Group(); arm.position.set(0.23 * side, 0.5, 0);
-    const up = capsule(0.058, 0.22, mats.hoodie); up.position.y = -0.15; arm.add(up);
-    const elbow = new THREE.Group(); elbow.position.y = -0.3; arm.add(elbow);
-    const fore = capsule(0.052, 0.2, mats.hoodie); fore.position.y = -0.13; elbow.add(fore);
-    const hand = sphere(0.05, mats.skin, 10, 8); hand.position.y = -0.28; elbow.add(hand);
-    const anchor = new THREE.Object3D(); anchor.position.y = -0.3; elbow.add(anchor);
-    arm.userData.elbow = elbow; arm.userData.hand = anchor;
-    arm.rotation.z = 0.12 * side;
-    torso.add(arm); return arm;
-  };
-  const armL = mkArm(1), armR = mkArm(-1);
-
-  // Hoodie brand patch — small chest label showing the apparel brand
-  if (c.hoodieLabel) {
-    const brand = APPAREL_BRANDS.find(b => b.id === c.hoodieLabel);
-    const pc = typeof document !== 'undefined' ? document.createElement('canvas') : null;
-    if (pc) {
-      pc.width = 128; pc.height = 56;
-      const px = pc.getContext('2d');
-      const bg = brand ? brand.bg : '#1a1a1a';
-      const fg = brand ? brand.fg : '#ffffff';
-      const lbl = (brand ? brand.label : c.hoodieLabel).toUpperCase();
-      px.fillStyle = bg; px.beginPath(); px.roundRect(3, 3, 122, 50, 7); px.fill();
-      px.fillStyle = fg;
-      px.font = `900 ${lbl.length > 8 ? 14 : lbl.length > 5 ? 17 : 21}px system-ui, sans-serif`;
-      px.textAlign = 'center'; px.textBaseline = 'middle';
-      px.fillText(lbl, 64, 28);
-      const pt = new THREE.CanvasTexture(pc); pt.colorSpace = THREE.SRGBColorSpace;
-      const patch = new THREE.Mesh(
-        new THREE.BoxGeometry(0.135, 0.057, 0.006),
-        new THREE.MeshStandardMaterial({ map: pt, roughness: 0.7, transparent: true })
-      );
-      patch.position.set(0, 0.22, 0.148);
-      torso.add(patch);
-    }
-  }
-
-  // Shoe brand side stripe — colored accent stripe on outer shoe face
-  if (c.shoeBrand) {
-    const sb = SHOE_BRANDS.find(b => b.id === c.shoeBrand);
-    const col = sb ? sb.accent : '#1a1a1a';
-    const stripeMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.55 });
-    for (const [leg, side] of [[legL, 1], [legR, -1]]) {
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.036, 0.15), stripeMat);
-      stripe.position.set(0.057 * side, -0.425, 0.06);
-      leg.userData.knee.add(stripe);
-    }
-  }
-
-  root.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
-  const setColors = (n) => { for (const k in n) if (mats[k]) mats[k].color.set(n[k]); };
-  return { group: root, parts: { hips, torso, head, legL, legR, armL, armR }, setColors, mats };
+  // Delegate to the enhanced AvatarModel in avatar.js
+  // Returns {group, parts, mats, setColors, _model} — fully backwards-compatible
+  return makeAvatarModel({
+    skin: SKIN_TONES[3], hoodie: HOODIES[0], pants: '#3a4150',
+    shoes: '#f4f4f4', hat: '#2b2f38',
+    ...o,
+  });
 }
 
 /* ---------------- Skateboard ---------------- */
 export function makeBoard(o = {}) {
-  const c = { deck: DECKS[0], grip: '#1a1b1e', wheels: '#f6efe0', trucks: '#aab2bc', brand: null, ...o };
-  const g = new THREE.Group(); g.name = 'Skateboard';
-  const deckMat = new THREE.MeshStandardMaterial({ color: c.deck, roughness: 0.55 });
-  const wood = new THREE.MeshStandardMaterial({ color: '#d8b98a', roughness: 0.7 });
-  const gripMat = new THREE.MeshStandardMaterial({ color: c.grip, roughness: 1 });
-  // bottom graphic (original design), redrawn when the deck colour changes
-  const cv = typeof document !== 'undefined' ? document.createElement('canvas') : null;
-  let gfxMat = deckMat;
-  const drawDeck = (color) => {
-    if (!cv) return; cv.width = 128; cv.height = 512; const x = cv.getContext('2d');
-    const brand = c.brand ? DECK_BRANDS.find(b => b.id === c.brand) : null;
-    if (brand) {
-      paintDeckBrand(x, brand);
-    } else {
-      x.fillStyle = color; x.fillRect(0, 0, 128, 512);
-      x.fillStyle = 'rgba(255,255,255,0.9)'; for (let i = 0; i < 5; i++) x.fillRect(0, 150 + i * 22, 128, 9);
-      x.fillStyle = 'rgba(0,0,0,0.25)'; x.beginPath(); x.arc(64, 360, 34, 0, Math.PI * 2); x.fill();
-      x.save(); x.translate(64, 360); x.rotate(-Math.PI / 2); x.fillStyle = '#fff'; x.font = '900 34px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('SC', 0, 2); x.restore();
-    }
-    if (gfxMat.map) gfxMat.map.needsUpdate = true;
-  };
-  if (cv) { drawDeck(c.deck); const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; gfxMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 }); }
-  const flat = mesh(new THREE.BoxGeometry(0.21, 0.018, 0.58), [wood, wood, gripMat, gfxMat, wood, wood]); flat.position.y = 0.095; g.add(flat);
-  const grip = box(0.205, 0.004, 0.58, gripMat, 0, 0.106, 0); g.add(grip);
-  for (const s of [1, -1]) {
-    const kick = mesh(new THREE.BoxGeometry(0.21, 0.018, 0.14), [wood, wood, gripMat, deckMat, wood, wood]);
-    kick.position.set(0, 0.113, 0.345 * s); kick.rotation.x = -0.28 * s; g.add(kick);
-    const nose = mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.018, 16, 1, false, 0, Math.PI), deckMat);
-    nose.rotation.y = s > 0 ? -Math.PI / 2 : Math.PI / 2; nose.position.set(0, 0.13, 0.41 * s); nose.scale.z = 0.5; g.add(nose);
-    const truck = box(0.17, 0.03, 0.05, mat(c.trucks, { metalness: 0.8, roughness: 0.35 }), 0, 0.065, 0.22 * s); g.add(truck);
-    for (const x of [-0.085, 0.085]) { const w = wheel(0.028, 0.03, c.wheels, c.wheels); w.position.set(x, 0.028, 0.22 * s); g.add(w); }
-  }
-  g.userData.deckMat = deckMat;
-  g.userData.setDeck = (color) => { deckMat.color.set(color); drawDeck(color); };
-  return g;
+  // Delegate to the enhanced SkateboardModel in avatar.js
+  // Returns a THREE.Group with userData.setDeck, userData.spinWheels, userData.tiltTrucks
+  return makeSkateboardModel({
+    deck: DECKS[0], grip: '#1a1b1e', wheels: '#f6efe0', trucks: '#aab2bc',
+    ...o,
+  });
 }
 
 /* ---------------- Vehicles ---------------- */

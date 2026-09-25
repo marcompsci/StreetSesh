@@ -8,5 +8,16 @@
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>StreetSesh uses your location to suggest nearby skate shops and spots while the app is open.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>StreetSesh uses your camera to take photos of skate spots and record clips to share with your crew.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>StreetSesh uses your microphone to record video clips of your skate sessions.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>StreetSesh accesses your photo library to attach clips and spot photos.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>instagram</string>
+		<string>instagram-stories</string>
+	</array>
 </dict>
 </plist>

@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import Combine
 
 // MARK: - SF Landmark Data
 
@@ -48,6 +49,25 @@ struct SkateCityExploreView: View {
     @State private var liveShops: [MKMapItem] = []
     @State private var activeRoute: MKRoute? = nil
     @State private var isLoadingDirections = false
+
+    // Map appearance — auto (time-based) or manual override
+    @State private var mapSchemeOverride: ColorScheme? = nil
+    @State private var clockTick = Date()
+    private let mapTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
+    // MARK: - Time-based map style helpers
+
+    private var timeBasedIsDark: Bool {
+        _ = clockTick  // depend on tick so auto updates each minute
+        let h = Calendar.current.component(.hour, from: Date())
+        return h < 6 || h >= 20   // dark: 8 pm – 6 am
+    }
+
+    private var effectiveColorScheme: ColorScheme {
+        mapSchemeOverride ?? (timeBasedIsDark ? .dark : .light)
+    }
+
+    private var isMapDark: Bool { effectiveColorScheme == .dark }
 
     enum DisplayMode: String, CaseIterable {
         case map  = "Map"
@@ -104,6 +124,7 @@ struct SkateCityExploreView: View {
         .task {
             await searchRealShops()
         }
+        .onReceive(mapTimer) { date in clockTick = date }
     }
 
     // MARK: - Top Bar
@@ -195,7 +216,7 @@ struct SkateCityExploreView: View {
 
                 // Skate spots
                 if filterMode != .shops {
-                    ForEach(SKMockData.spots) { spot in
+                    ForEach(SKMockData.realSpots + SKMockData.fresnoSpots) { spot in
                         Annotation(spot.name, coordinate: spot.coordinate, anchor: .bottom) {
                             spotPin(spot)
                                 .onTapGesture { selectedSpot = spot }
@@ -217,7 +238,13 @@ struct SkateCityExploreView: View {
                 }
             }
             .mapStyle(.standard)
+            .environment(\.colorScheme, effectiveColorScheme)
             .ignoresSafeArea(edges: .bottom)
+            .overlay(alignment: .topTrailing) {
+                mapModeToggleButton
+                    .padding(.top, 14)
+                    .padding(.trailing, 12)
+            }
 
             // Route / loading controls
             if activeRoute != nil || isLoadingDirections {
@@ -253,7 +280,88 @@ struct SkateCityExploreView: View {
         }
     }
 
+    // MARK: - Map Mode Toggle
+
+    private var mapModeToggleButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.22)) {
+                // Cycle: auto → force-dark → force-light → auto
+                switch mapSchemeOverride {
+                case nil:
+                    mapSchemeOverride = timeBasedIsDark ? .light : .dark
+                case .dark:
+                    mapSchemeOverride = .light
+                case .light:
+                    mapSchemeOverride = nil
+                default:
+                    mapSchemeOverride = nil
+                }
+            }
+        } label: {
+            VStack(spacing: 3) {
+                Group {
+                    if mapSchemeOverride == nil {
+                        Image(systemName: "clock.arrow.2.circlepath")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.skLime)
+                    } else if isMapDark {
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#C77DFF"))
+                    } else {
+                        Image(systemName: "sun.max.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#FFD700"))
+                    }
+                }
+                Text(mapSchemeOverride == nil
+                     ? "AUTO"
+                     : (isMapDark ? "NIGHT" : "DAY"))
+                    .font(.system(size: 7, weight: .black))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .tracking(0.5)
+            }
+            .frame(width: 48, height: 48)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .shadow(color: .black.opacity(0.25), radius: 6, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .stroke(
+                        mapSchemeOverride == nil ? Color.skLime.opacity(0.4) :
+                        (isMapDark ? Color(hex: "#C77DFF").opacity(0.5) : Color(hex: "#FFD700").opacity(0.5)),
+                        lineWidth: 1
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Map Pins
+
+    private var homeBasePin: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                // Pulsing lime ring
+                Circle()
+                    .stroke(Color.skLime.opacity(0.4), lineWidth: 8)
+                    .frame(width: 52, height: 52)
+                Image("SSMapSticker")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 44, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Color.skLime, lineWidth: 2)
+                    )
+                    .shadow(color: Color.skLime.opacity(0.6), radius: 8)
+            }
+            Triangle()
+                .fill(Color.skLime)
+                .frame(width: 8, height: 6)
+        }
+    }
 
     private func liveShopPin() -> some View {
         VStack(spacing: 0) {
@@ -436,7 +544,7 @@ struct SkateCityExploreView: View {
     private var spotsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             SKSectionHeader(title: "SKATE SPOTS")
-            ForEach(SKMockData.spots) { spot in
+            ForEach(SKMockData.realSpots + SKMockData.fresnoSpots) { spot in
                 Button { selectedSpot = spot } label: { spotRow(spot) }
             }
         }
