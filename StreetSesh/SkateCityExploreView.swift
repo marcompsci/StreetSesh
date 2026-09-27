@@ -192,9 +192,9 @@ struct SkateCityExploreView: View {
         ZStack(alignment: .bottomTrailing) {
             Map(position: $mapPosition) {
 
-                // Shops — Bay Area real shops always visible + live Apple Maps overlay
+                // Shops — all California shops visible + live Apple Maps overlay
                 if filterMode != .spots {
-                    ForEach(SkateShop.bayArea) { shop in
+                    ForEach(SkateShop.bayArea + SkateShop.california) { shop in
                         Annotation(shop.name, coordinate: shop.coordinate, anchor: .bottom) {
                             shopPin(shop)
                                 .onTapGesture { selectedShop = shop }
@@ -448,8 +448,8 @@ struct SkateCityExploreView: View {
 
     private var shopsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SKSectionHeader(title: "BAY AREA SKATE SHOPS")
-            ForEach(SkateShop.bayArea) { shop in
+            SKSectionHeader(title: "CALIFORNIA SKATE SHOPS")
+            ForEach(SkateShop.bayArea + SkateShop.california) { shop in
                 Button { selectedShop = shop } label: { shopRow(shop) }
             }
             if !liveShops.isEmpty {
