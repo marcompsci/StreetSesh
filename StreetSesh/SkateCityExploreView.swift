@@ -49,6 +49,8 @@ struct SkateCityExploreView: View {
     @State private var liveShops: [MKMapItem] = []
     @State private var activeRoute: MKRoute? = nil
     @State private var isLoadingDirections = false
+    @State private var spot3DStore = SpotStore()
+    @State private var selectedSpot3D: Spot3D?
 
     // Map appearance — auto (time-based) or manual override
     @State private var mapSchemeOverride: ColorScheme? = nil
@@ -121,8 +123,16 @@ struct SkateCityExploreView: View {
                 .presentationDetents([.medium])
                 .presentationBackground(Color.skDark)
         }
+        .sheet(item: $selectedSpot3D) { spot in
+            Spot3DDetailSheet(spot: spot)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.skDark)
+        }
         .task {
             await searchRealShops()
+            spot3DStore.load()
+            await spot3DStore.refineCoordinates()
         }
         .onReceive(mapTimer) { date in clockTick = date }
     }
@@ -221,6 +231,25 @@ struct SkateCityExploreView: View {
                             spotPin(spot)
                                 .onTapGesture { selectedSpot = spot }
                         }
+                    }
+                    // 3D street spots + skateparks
+                    ForEach(spot3DStore.spots.filter { $0.category != .shop }) { spot in
+                        Annotation(spot.name, coordinate: spot.coordinate, anchor: .bottom) {
+                            Spot3DPin(spot: spot, isSelected: false)
+                                .onTapGesture { selectedSpot3D = spot }
+                        }
+                        .annotationTitles(.hidden)
+                    }
+                }
+
+                // 3D skate shops
+                if filterMode != .spots {
+                    ForEach(spot3DStore.spots.filter { $0.category == .shop }) { spot in
+                        Annotation(spot.name, coordinate: spot.coordinate, anchor: .bottom) {
+                            Spot3DPin(spot: spot, isSelected: false)
+                                .onTapGesture { selectedSpot3D = spot }
+                        }
+                        .annotationTitles(.hidden)
                     }
                 }
 

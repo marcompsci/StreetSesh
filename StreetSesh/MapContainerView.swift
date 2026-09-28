@@ -21,6 +21,8 @@ struct MapContainerView: View {
     @State private var showGoLive = false
     @State private var showSpotSubmit = false
     @State private var showDiscover = false
+    @State private var spot3DStore = SpotStore()
+    @State private var selectedSpot3D: Spot3D?
 
     private let sfCenter = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
 
@@ -52,8 +54,18 @@ struct MapContainerView: View {
             SpotDiscoverView(userCoordinate: locationManager.location?.coordinate)
                 .presentationBackground(Color.black)
         }
+        .sheet(item: $selectedSpot3D) { spot in
+            Spot3DDetailSheet(spot: spot)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.black)
+        }
         .onAppear {
             locationManager.requestAuthorization()
+        }
+        .task {
+            spot3DStore.load()
+            await spot3DStore.refineCoordinates()
         }
     }
 
@@ -79,6 +91,14 @@ struct MapContainerView: View {
                 ) {
                     LiveSessionPinView(session: session)
                 }
+            }
+
+            ForEach(spot3DStore.spots) { spot in
+                Annotation(spot.name, coordinate: spot.coordinate, anchor: .bottom) {
+                    Spot3DPin(spot: spot, isSelected: false)
+                        .onTapGesture { selectedSpot3D = spot }
+                }
+                .annotationTitles(.hidden)
             }
         }
         .mapStyle(
