@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+import AuthenticationServices
+import Supabase
+import Auth
 
 // MARK: - Main Coordinator
 
@@ -20,8 +23,9 @@ struct OnboardingView: View {
     @State private var board  = BoardData()
     @State private var avatarCat: AvatarCategory = .look
     @State private var boardCat: BoardCategory = .deck
+    @State private var usedSocialAuth = false
 
-    private let totalSteps = 6
+    private let totalSteps = 7
 
     var body: some View {
         ZStack {
@@ -40,12 +44,13 @@ struct OnboardingView: View {
             Group {
                 switch step {
                 case 0: splashStep
-                case 1: nameStep
-                case 2: emailStep
-                case 3: ageStep
-                case 4: stanceStep
-                case 5: styleStep
-                case 6: readyStep
+                case 1: authStep
+                case 2: nameStep
+                case 3: emailStep
+                case 4: ageStep
+                case 5: stanceStep
+                case 6: styleStep
+                case 7: readyStep
                 default: splashStep
                 }
             }
@@ -136,7 +141,90 @@ extension OnboardingView {
         }
     }
 
-    // MARK: Name (1)
+    // MARK: Auth (1)
+
+    private var authStep: some View {
+        VStack(spacing: 0) {
+            Spacer().frame(height: 110)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Join the\ncrew.").font(.system(size: 36, weight: .black)).foregroundStyle(.white)
+                Text("Quick sign-in, or build your profile with email.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 28).padding(.bottom, 36)
+
+            Spacer()
+
+            VStack(spacing: 14) {
+                SignInWithAppleButton(.signIn,
+                    onRequest: { req in req.requestedScopes = [.fullName, .email] },
+                    onCompletion: handleAppleSignIn
+                )
+                .signInWithAppleButtonStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                Button(action: handleGoogleSignIn) {
+                    HStack(spacing: 10) {
+                        Text("G").font(.system(size: 20, weight: .bold)).foregroundStyle(Color(hex: "#4285F4"))
+                        Text("Sign in with Google").font(.headline.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity).frame(minHeight: 56)
+                    .background(Color.white).foregroundStyle(Color.black)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+
+                HStack {
+                    Rectangle().fill(Color.white.opacity(0.15)).frame(height: 1)
+                    Text("or").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 12)
+                    Rectangle().fill(Color.white.opacity(0.15)).frame(height: 1)
+                }
+                .padding(.vertical, 4)
+
+                Button(action: next) {
+                    Text("Continue with email  →")
+                        .font(.headline.weight(.black))
+                        .frame(maxWidth: .infinity).padding(18)
+                        .background(Color.orange).foregroundStyle(Color.black)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+            }
+            .padding(.horizontal, 28).padding(.bottom, 52)
+        }
+    }
+
+    private func handleAppleSignIn(_ result: Result<ASAuthorization, Error>) {
+        guard case .success(let auth) = result,
+              let cred = auth.credential as? ASAuthorizationAppleIDCredential else { return }
+        if let firstName = cred.fullName?.givenName, !firstName.isEmpty { username = firstName }
+        if let appleEmail = cred.email { email = appleEmail }
+        usedSocialAuth = true
+        if let tokenData = cred.identityToken, let tokenStr = String(data: tokenData, encoding: .utf8) {
+            Task {
+                try? await SupabaseService.shared.client.auth.signInWithIdToken(
+                    credentials: .init(provider: .apple, idToken: tokenStr)
+                )
+            }
+        }
+        goingForward = true
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) { step = 7 }
+    }
+
+    private func handleGoogleSignIn() {
+        Task {
+            do {
+                try await SupabaseService.shared.client.auth.signInWithOAuth(provider: .google)
+                usedSocialAuth = true
+                await MainActor.run {
+                    goingForward = true
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) { step = 7 }
+                }
+            } catch { }
+        }
+    }
+
+    // MARK: Name (2)
 
     private var nameStep: some View {
         stepShell(title: "What do they\ncall you?", subtitle: "Your tag on the streets.",
@@ -150,7 +238,7 @@ extension OnboardingView {
         }
     }
 
-    // MARK: Email (2)
+    // MARK: Email (3)
 
     private var emailStep: some View {
         stepShell(title: "Drop your\nemail.", subtitle: "Account recovery only. We don't spam.",
@@ -167,7 +255,7 @@ extension OnboardingView {
         }
     }
 
-    // MARK: Age (3)
+    // MARK: Age (4)
 
     private var ageStep: some View {
         stepShell(title: "How old\nare you?", subtitle: "Keeps content age-appropriate.",
@@ -189,7 +277,7 @@ extension OnboardingView {
         }
     }
 
-    // MARK: Stance (4)
+    // MARK: Stance (5)
 
     private var stanceStep: some View {
         stepShell(title: "Regular\nor Goofy?", subtitle: "Which foot do you lead with?",
@@ -225,7 +313,7 @@ extension OnboardingView {
         .buttonStyle(.plain)
     }
 
-    // MARK: Style (5)
+    // MARK: Style (6)
 
     private var styleStep: some View {
         stepShell(title: "What's\nyour vibe?", subtitle: "Pick the style that fits.", canContinue: true) {
@@ -565,7 +653,7 @@ extension OnboardingView {
         }
     }
 
-    // MARK: Ready (6)
+    // MARK: Ready (7)
 
     private var readyStep: some View {
         VStack(spacing: 0) {

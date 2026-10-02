@@ -51,6 +51,7 @@ struct SkateCityExploreView: View {
     @State private var isLoadingDirections = false
     @State private var spot3DStore = SpotStore()
     @State private var selectedSpot3D: Spot3D?
+    @State private var selectedSkatepark: CaliforniaSkatepark?
 
     // Map appearance — auto (time-based) or manual override
     @State private var mapSchemeOverride: ColorScheme? = nil
@@ -128,6 +129,9 @@ struct SkateCityExploreView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.skDark)
+        }
+        .sheet(item: $selectedSkatepark) { park in
+            skateparkSheet(park)
         }
         .task {
             await searchRealShops()
@@ -237,6 +241,14 @@ struct SkateCityExploreView: View {
                         Annotation(spot.name, coordinate: spot.coordinate, anchor: .bottom) {
                             Spot3DPin(spot: spot, isSelected: false)
                                 .onTapGesture { selectedSpot3D = spot }
+                        }
+                        .annotationTitles(.hidden)
+                    }
+                    // 536 California skateparks (OSM)
+                    ForEach(CaliforniaSkatepark.all) { park in
+                        Annotation(park.name, coordinate: park.coordinate, anchor: .bottom) {
+                            skateparkPin()
+                                .onTapGesture { selectedSkatepark = park }
                         }
                         .annotationTitles(.hidden)
                     }
@@ -458,6 +470,75 @@ struct SkateCityExploreView: View {
         }
     }
 
+    private func skateparkPin() -> some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "#39D353"))
+                    .frame(width: 26, height: 26)
+                    .shadow(color: Color(hex: "#39D353").opacity(0.35), radius: 4)
+                Image(systemName: "skateboard.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.black)
+            }
+            Triangle()
+                .fill(Color(hex: "#39D353"))
+                .frame(width: 6, height: 4)
+        }
+    }
+
+    private func skateparkRow(_ park: CaliforniaSkatepark) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(hex: "#39D353").opacity(0.12))
+                    .frame(width: 48, height: 48)
+                Image(systemName: "skateboard.fill")
+                    .font(.title3)
+                    .foregroundStyle(Color(hex: "#39D353"))
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(park.name).font(.subheadline.bold()).foregroundStyle(.skText)
+                Text(park.city).font(.caption).foregroundStyle(.skSub)
+            }
+            Spacer()
+            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.skSub)
+        }
+        .skBorderCard(padding: 12)
+    }
+
+    private func skateparkSheet(_ park: CaliforniaSkatepark) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 6) {
+                Image(systemName: "skateboard.fill")
+                    .foregroundStyle(Color(hex: "#39D353"))
+                Text("SKATEPARK")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(Color(hex: "#39D353"))
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(park.name).font(.title2.bold()).foregroundStyle(.skText)
+                Text(park.city).font(.subheadline).foregroundStyle(.skSub)
+            }
+            Button {
+                let item = MKMapItem(placemark: MKPlacemark(coordinate: park.coordinate))
+                item.name = park.name
+                item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDefault])
+            } label: {
+                Label("Get Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                    .frame(maxWidth: .infinity).padding(16)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Color(hex: "#39D353"))
+            .foregroundStyle(.black)
+            Spacer()
+        }
+        .padding(20)
+        .presentationDetents([.height(240)])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Color.skDark)
+    }
+
     // MARK: - List
 
     private var listContent: some View {
@@ -575,6 +656,11 @@ struct SkateCityExploreView: View {
             SKSectionHeader(title: "SKATE SPOTS")
             ForEach(SKMockData.realSpots + SKMockData.fresnoSpots + SKMockData.laSpots) { spot in
                 Button { selectedSpot = spot } label: { spotRow(spot) }
+            }
+            SKSectionHeader(title: "CALIFORNIA SKATEPARKS  ·  \(CaliforniaSkatepark.all.count)")
+                .padding(.top, 8)
+            ForEach(CaliforniaSkatepark.all) { park in
+                Button { selectedSkatepark = park } label: { skateparkRow(park) }
             }
         }
     }

@@ -23,6 +23,7 @@ struct MapContainerView: View {
     @State private var showDiscover = false
     @State private var spot3DStore = SpotStore()
     @State private var selectedSpot3D: Spot3D?
+    @State private var selectedSkatepark: CaliforniaSkatepark?
 
     private let sfCenter = CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194)
 
@@ -59,6 +60,32 @@ struct MapContainerView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.black)
+        }
+        .sheet(item: $selectedSkatepark) { park in
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 6) {
+                    Image(systemName: "skateboard.fill").foregroundStyle(Color(hex: "#39D353"))
+                    Text("SKATEPARK").font(.system(size: 10, weight: .black)).foregroundStyle(Color(hex: "#39D353"))
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(park.name).font(.title2.bold()).foregroundStyle(.white)
+                    Text(park.city).font(.subheadline).foregroundStyle(.secondary)
+                }
+                Button {
+                    let item = MKMapItem(placemark: MKPlacemark(coordinate: park.coordinate))
+                    item.name = park.name
+                    item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDefault])
+                } label: {
+                    Label("Get Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                        .frame(maxWidth: .infinity).padding(16)
+                }
+                .buttonStyle(.borderedProminent).tint(Color(hex: "#39D353")).foregroundStyle(.black)
+                Spacer()
+            }
+            .padding(20)
+            .presentationDetents([.height(240)])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color.black)
         }
         .onAppear {
             locationManager.requestAuthorization()
@@ -97,6 +124,27 @@ struct MapContainerView: View {
                 Annotation(spot.name, coordinate: spot.coordinate, anchor: .bottom) {
                     Spot3DPin(spot: spot, isSelected: false)
                         .onTapGesture { selectedSpot3D = spot }
+                }
+                .annotationTitles(.hidden)
+            }
+
+            ForEach(CaliforniaSkatepark.all) { park in
+                Annotation(park.name, coordinate: park.coordinate, anchor: .bottom) {
+                    VStack(spacing: 0) {
+                        ZStack {
+                            Circle().fill(Color(hex: "#39D353")).frame(width: 22, height: 22)
+                            Image(systemName: "skateboard.fill").font(.system(size: 9)).foregroundStyle(.black)
+                        }
+                        Path { p in
+                            p.move(to: CGPoint(x: 2.5, y: 0))
+                            p.addLine(to: CGPoint(x: 5, y: 3))
+                            p.addLine(to: CGPoint(x: 0, y: 3))
+                            p.closeSubpath()
+                        }
+                        .fill(Color(hex: "#39D353"))
+                        .frame(width: 5, height: 3)
+                    }
+                    .onTapGesture { selectedSkatepark = park }
                 }
                 .annotationTitles(.hidden)
             }
