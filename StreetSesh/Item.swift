@@ -13,6 +13,10 @@ final class AppUser {
     var skatingStyleRaw: String
     var avatarJSON: String
     var boardJSON: String
+    var isSuspended: Bool = false
+    var isBanned: Bool = false
+    var banReason: String = ""
+    var isAgeVerified: Bool = false
 
     var stance: Stance {
         get { Stance(rawValue: stanceRaw) ?? .regular }

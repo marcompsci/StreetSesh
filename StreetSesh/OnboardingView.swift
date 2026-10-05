@@ -24,6 +24,9 @@ struct OnboardingView: View {
     @State private var avatarCat: AvatarCategory = .look
     @State private var boardCat: BoardCategory = .deck
     @State private var usedSocialAuth = false
+    @State private var ageVerified = false
+    @State private var isCheckingBan = false
+    @State private var blockedAtSignup = false
 
     private let totalSteps = 7
 
@@ -44,10 +47,10 @@ struct OnboardingView: View {
             Group {
                 switch step {
                 case 0: splashStep
-                case 1: authStep
-                case 2: nameStep
-                case 3: emailStep
-                case 4: ageStep
+                case 1: ageVerifyStep
+                case 2: authStep
+                case 3: nameStep
+                case 4: emailStep
                 case 5: stanceStep
                 case 6: styleStep
                 case 7: readyStep
@@ -90,19 +93,31 @@ struct OnboardingView: View {
     }
 
     private func createUser() {
-        let name = username.trimmingCharacters(in: .whitespaces)
-        let age  = Int(ageText) ?? 0
-        let user = AppUser(
-            username: name.isEmpty ? "skater" : name,
-            email: email.trimmingCharacters(in: .whitespaces),
-            isUnder18: age > 0 && age < 18,
-            stance: stance,
-            skatingStyle: skateStyle,
-            avatar: avatar,
-            board: board
-        )
-        modelContext.insert(user)
-        Task { try? await SupabaseService.shared.upsertUser(user) }
+        let name  = username.trimmingCharacters(in: .whitespaces)
+        let resolvedEmail = email.trimmingCharacters(in: .whitespaces)
+        isCheckingBan = true
+        Task {
+            defer { isCheckingBan = false }
+            let banned = await ModerationService.shared.isIdentifierBanned(
+                email: resolvedEmail, username: name.isEmpty ? "skater" : name
+            )
+            if banned {
+                blockedAtSignup = true
+                return
+            }
+            let user = AppUser(
+                username: name.isEmpty ? "skater" : name,
+                email: resolvedEmail,
+                isUnder18: false,
+                stance: stance,
+                skatingStyle: skateStyle,
+                avatar: avatar,
+                board: board
+            )
+            user.isAgeVerified = ageVerified
+            modelContext.insert(user)
+            try? await SupabaseService.shared.upsertUser(user)
+        }
     }
 }
 
@@ -141,7 +156,19 @@ extension OnboardingView {
         }
     }
 
-    // MARK: Auth (1)
+    // MARK: Age Verify (1)
+
+    private var ageVerifyStep: some View {
+        AgeVerificationView(
+            onVerified: {
+                ageVerified = true
+                next()
+            },
+            onCancel: back
+        )
+    }
+
+    // MARK: Auth (2)
 
     private var authStep: some View {
         VStack(spacing: 0) {
@@ -671,15 +698,28 @@ extension OnboardingView {
                     .padding(.top, 4)
             }
             Spacer()
+            if blockedAtSignup {
+                Label("This account is not permitted to register.", systemImage: "xmark.shield.fill")
+                    .font(.callout).foregroundStyle(.red)
+                    .padding(.horizontal, 28).padding(.bottom, 12)
+            }
+
             Button(action: createUser) {
-                HStack(spacing: 10) {
-                    Text("LET'S SKATE").font(.headline.weight(.black))
-                    Text("🛹").font(.title3)
+                Group {
+                    if isCheckingBan {
+                        ProgressView().tint(.black)
+                    } else {
+                        HStack(spacing: 10) {
+                            Text("LET'S SKATE").font(.headline.weight(.black))
+                            Text("🛹").font(.title3)
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity).padding(20)
                 .background(Color.orange).foregroundStyle(.black)
                 .clipShape(RoundedRectangle(cornerRadius: 18))
             }
+            .disabled(isCheckingBan)
             .padding(.horizontal, 28).padding(.bottom, 52)
         }
     }
