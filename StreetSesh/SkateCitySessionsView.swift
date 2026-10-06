@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct SkateCitySessionsView: View {
     @EnvironmentObject private var state: SkateCityAppState
@@ -357,6 +358,7 @@ struct SKCommentSheet: View {
     let clip: SkateClip
     @EnvironmentObject private var state: SkateCityAppState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @State private var newComment = ""
     @State private var showViolationAlert = false
@@ -497,7 +499,17 @@ struct SKCommentSheet: View {
         newComment = ""
         Task {
             let ok = await ModerationService.shared.validateAndSubmit(text: text, username: username)
-            if ok { state.addComment(to: clip.id, text: text) } else { showViolationAlert = true }
+            guard ok else { showViolationAlert = true; return }
+            state.addComment(to: clip.id, text: text)
+            // In-app notification for the clip's creator
+            let notif = NotificationItem(
+                kind: "comment",
+                title: "New comment",
+                body: "\(username) commented on \"\(clip.challengeTitle)\"",
+                targetID: clip.id.uuidString
+            )
+            modelContext.insert(notif)
+            try? modelContext.save()
         }
     }
 }

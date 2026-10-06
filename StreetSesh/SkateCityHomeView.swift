@@ -1,10 +1,15 @@
 import SwiftUI
+import SwiftData
 import CoreLocation
 
 struct SkateCityHomeView: View {
     @EnvironmentObject private var state: SkateCityAppState
-    @State private var showCustomize  = false
-    @State private var showSkateCity  = false
+    @Query private var allNotifications: [NotificationItem]
+    @State private var showCustomize     = false
+    @State private var showSkateCity     = false
+    @State private var showNotifications = false
+
+    private var unreadCount: Int { allNotifications.filter { !$0.isRead }.count }
     @State private var dailyChallenge: SkateChallenge = SKMockData.challenges[0]
     @State private var xpPulse = false
     @State private var gearTab = 0
@@ -63,6 +68,10 @@ struct SkateCityHomeView: View {
                 .presentationDetents([.large])
                 .presentationBackground(Color.skDark)
         }
+        .sheet(isPresented: $showNotifications) {
+            NotificationCenterView()
+                .presentationBackground(Color.black)
+        }
         #if os(iOS)
         .fullScreenCover(isPresented: $showSkateCity) {
             SkateCityGameView(
@@ -88,12 +97,36 @@ struct SkateCityHomeView: View {
                     .foregroundStyle(.skText)
             }
             Spacer()
-            Button { showCustomize = true } label: {
-                SKMiniSkater(style: state.profile.avatarStyle, size: 48)
-                    .frame(width: 48, height: 48)
-                    .background(Color.skCard)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.skLime, lineWidth: 1.5))
+            HStack(spacing: 10) {
+                // Bell with unread badge
+                Button { showNotifications = true } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.skText)
+                            .frame(width: 44, height: 44)
+                            .background(Color.skCard)
+                            .clipShape(Circle())
+                        if unreadCount > 0 {
+                            Text("\(min(unreadCount, 99))")
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 4)
+                                .frame(minWidth: 16, minHeight: 16)
+                                .background(Color.orange)
+                                .clipShape(Capsule())
+                                .offset(x: 5, y: -5)
+                        }
+                    }
+                }
+                // Avatar / customize
+                Button { showCustomize = true } label: {
+                    SKMiniSkater(style: state.profile.avatarStyle, size: 48)
+                        .frame(width: 48, height: 48)
+                        .background(Color.skCard)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.skLime, lineWidth: 1.5))
+                }
             }
         }
     }

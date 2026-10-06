@@ -169,6 +169,31 @@ struct GoLiveView: View {
             context: modelContext
         )
 
+        // In-app + push notification for each new trophy
+        for trophy in newTrophies {
+            let notif = NotificationItem(
+                kind: "trophy",
+                title: "Trophy unlocked! 🏆",
+                body: "You earned \"\(trophy.name)\"",
+                targetID: trophy.key
+            )
+            modelContext.insert(notif)
+            NotificationService.shared.scheduleLocal(
+                title: "Trophy unlocked! 🏆",
+                body: "You earned \"\(trophy.name)\"",
+                identifier: "trophy_\(trophy.key)"
+            )
+        }
+
+        // In-app notification for the new session
+        let sessionNotif = NotificationItem(
+            kind: "session",
+            title: "Session started",
+            body: "You went live at \(spot.name).",
+            targetID: spot.name
+        )
+        modelContext.insert(sessionNotif)
+
         Task {
             try? await SupabaseService.shared.deactivateSessions(for: user.username)
             try? await SupabaseService.shared.pushLiveSession(session)

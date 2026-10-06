@@ -32,6 +32,12 @@ struct ContentView: View {
             SampleData.seedBustVotes(into: modelContext)
         }
         .task {
+            // Request push notification permission once user is onboarded
+            if currentUser != nil {
+                await NotificationService.shared.requestPermission()
+                NotificationService.shared.scheduleDailyChallenge()
+            }
+
             // Check moderation status for existing user
             if let user = currentUser {
                 let status = await ModerationService.shared.fetchModerationStatus(username: user.username)
