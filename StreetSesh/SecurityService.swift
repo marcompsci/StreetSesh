@@ -12,8 +12,14 @@ final class SecurityService {
 
     /// Returns true when the device or binary shows signs of tampering.
     /// Call once at launch; if true, show AppSecurityGateView and halt.
+    /// Always returns false in DEBUG builds — debugger attachment would otherwise
+    /// trigger a false positive via the P_TRACED flag check.
     func isDeviceCompromised() -> Bool {
+#if DEBUG
+        return false
+#else
         return isJailbroken() || isBundleIDSpoofed() || isDebugged()
+#endif
     }
 
     /// Returns true if the app is currently being screen-recorded.
