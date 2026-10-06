@@ -15,6 +15,7 @@ struct SkateCityHomeView: View {
     @State private var showSkateCity     = false
     @State private var showNotifications = false
     @State private var showActivityFeed  = false
+    @State private var showDiscover      = false
 
     private var unreadCount: Int { allNotifications.filter { !$0.isRead }.count }
     @State private var dailyChallenge: SkateChallenge = SKMockData.challenges[0]
@@ -56,6 +57,7 @@ struct SkateCityHomeView: View {
                         levelCard
                         knowTheSpotCard
                         dailyChallengeCard
+                        discoverBanner
                         nearbySection
                         crewActivitySection
                         Spacer(minLength: 40)
@@ -81,6 +83,10 @@ struct SkateCityHomeView: View {
         }
         .sheet(isPresented: $showActivityFeed) {
             ActivityFeedView()
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showDiscover) {
+            DiscoverView()
                 .presentationBackground(Color.black)
         }
         #if os(iOS)
@@ -638,6 +644,50 @@ struct SkateCityHomeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 14))
         }
         .skCard()
+    }
+
+    // MARK: - Discover Banner
+
+    private var discoverBanner: some View {
+        let hotCount = recentSessions.filter { $0.isActive }.count
+        let spotCount = recentSpots.filter { !$0.isRetired }.count
+        return Button { showDiscover = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(hex: "#CCFF40").opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color(hex: "#CCFF40"))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text("Discover Spots")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                        if hotCount > 0 {
+                            Label("\(hotCount) live", systemImage: "bolt.fill")
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color(hex: "#CCFF40"))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    Text("\(spotCount) spots · personalized for you")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#CCFF40").opacity(0.18), lineWidth: 1))
+        }
     }
 
     // MARK: - Nearby Energy
