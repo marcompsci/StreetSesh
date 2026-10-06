@@ -359,6 +359,7 @@ struct SKCommentSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var newComment = ""
+    @State private var showViolationAlert = false
 
     private var comments: [SKComment] { state.comments(for: clip.id) }
 
@@ -455,6 +456,11 @@ struct SKCommentSheet: View {
                 }
             }
         }
+        .alert("Content Blocked", isPresented: $showViolationAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your comment was flagged and not posted. Keep it positive and respectful.")
+        }
     }
 
     private func commentRow(_ comment: SKComment) -> some View {
@@ -486,8 +492,13 @@ struct SKCommentSheet: View {
     }
 
     private func postComment() {
-        state.addComment(to: clip.id, text: newComment)
+        let text = newComment
+        let username = state.profile.displayName
         newComment = ""
+        Task {
+            let ok = await ModerationService.shared.validateAndSubmit(text: text, username: username)
+            if ok { state.addComment(to: clip.id, text: text) } else { showViolationAlert = true }
+        }
     }
 }
 
@@ -502,6 +513,7 @@ struct SKCreateSessionSheet: View {
     @State private var privacy       = SessionPrivacy.crew
     @State private var maxParticipants = 6
     @State private var sessionDate   = Date().addingTimeInterval(7200)
+    @State private var showViolationAlert = false
 
     private var isValid: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -538,19 +550,24 @@ struct SKCreateSessionSheet: View {
                         }
                         SKButton(title: "Create Session", style: isValid ? .primary : .ghost) {
                             guard isValid else { return }
-                            let session = CrewSession(
-                                id: UUID(),
-                                title: title.trimmingCharacters(in: .whitespaces),
-                                hostName: state.profile.displayName,
-                                neighborhood: neighborhood,
-                                startTime: sessionDate,
-                                participantCount: 1,
-                                maxParticipants: maxParticipants,
-                                privacy: privacy,
-                                status: .upcoming
-                            )
-                            state.addSession(session)
-                            dismiss()
+                            let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
+                            Task {
+                                let ok = await ModerationService.shared.validateAndSubmit(text: trimmedTitle, username: state.profile.displayName)
+                                guard ok else { showViolationAlert = true; return }
+                                let session = CrewSession(
+                                    id: UUID(),
+                                    title: trimmedTitle,
+                                    hostName: state.profile.displayName,
+                                    neighborhood: neighborhood,
+                                    startTime: sessionDate,
+                                    participantCount: 1,
+                                    maxParticipants: maxParticipants,
+                                    privacy: privacy,
+                                    status: .upcoming
+                                )
+                                state.addSession(session)
+                                dismiss()
+                            }
                         }
                         .disabled(!isValid)
                     }
@@ -564,6 +581,11 @@ struct SKCreateSessionSheet: View {
                     Button("Cancel") { dismiss() }.foregroundStyle(.skText)
                 }
             }
+        }
+        .alert("Content Blocked", isPresented: $showViolationAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your session name was flagged. Please keep it positive and respectful.")
         }
     }
 
@@ -588,6 +610,7 @@ struct SKPostClipSheet: View {
     @State private var selectedChallenge = 0
     @State private var trickInput        = ""
     @State private var score             = 500
+    @State private var showViolationAlert = false
 
     var body: some View {
         NavigationStack {
@@ -640,22 +663,27 @@ struct SKPostClipSheet: View {
 
                     Spacer()
                     SKButton(title: "Post Clip") {
-                        let tags = trickInput.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-                        let clip = SkateClip(
-                            id: UUID(),
-                            creatorName: state.profile.displayName,
-                            creatorHandle: state.profile.handle,
-                            challengeTitle: SKMockData.challenges[selectedChallenge].title,
-                            score: score,
-                            likes: 0,
-                            comments: 0,
-                            createdAt: Date(),
-                            trickTags: tags.isEmpty ? ["Trick"] : tags,
-                            isLiked: false
-                        )
-                        state.postClip(clip)
-                        state.earnXP(score / 10)
-                        dismiss()
+                        let rawTricks = trickInput
+                        let tags = rawTricks.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                        Task {
+                            let ok = await ModerationService.shared.validateAndSubmit(text: rawTricks, username: state.profile.displayName)
+                            guard ok else { showViolationAlert = true; return }
+                            let clip = SkateClip(
+                                id: UUID(),
+                                creatorName: state.profile.displayName,
+                                creatorHandle: state.profile.handle,
+                                challengeTitle: SKMockData.challenges[selectedChallenge].title,
+                                score: score,
+                                likes: 0,
+                                comments: 0,
+                                createdAt: Date(),
+                                trickTags: tags.isEmpty ? ["Trick"] : tags,
+                                isLiked: false
+                            )
+                            state.postClip(clip)
+                            state.earnXP(score / 10)
+                            dismiss()
+                        }
                     }
                 }
                 .padding(20)
@@ -667,6 +695,11 @@ struct SKPostClipSheet: View {
                     Button("Cancel") { dismiss() }.foregroundStyle(.skText)
                 }
             }
+        }
+        .alert("Content Blocked", isPresented: $showViolationAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your post was flagged. Keep it positive — only good vibes here.")
         }
     }
 }

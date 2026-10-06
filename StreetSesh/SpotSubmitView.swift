@@ -5,6 +5,7 @@ import CoreLocation
 struct SpotSubmitView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query private var users: [AppUser]
     @State private var locationManager = LocationManager()
 
     @State private var name = ""
@@ -15,6 +16,7 @@ struct SpotSubmitView: View {
     @State private var fameTier: FameTier = .local
     @State private var bestTime = "Anytime"
     @State private var showEthicsGate = true
+    @State private var showViolationAlert = false
 
     var body: some View {
         NavigationStack {
@@ -37,6 +39,11 @@ struct SpotSubmitView: View {
         }
         .onAppear {
             locationManager.requestAuthorization()
+        }
+        .alert("Content Blocked", isPresented: $showViolationAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your spot submission was flagged. Please use appropriate names.")
         }
     }
 
@@ -143,22 +150,28 @@ struct SpotSubmitView: View {
     private func submitSpot() {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         guard !trimmedName.isEmpty else { return }
+        let username = users.first?.username ?? "skater"
+        Task {
+            let textToScan = ([trimmedName] + obstacles).joined(separator: " ")
+            let ok = await ModerationService.shared.validateAndSubmit(text: textToScan, username: username)
+            guard ok else { showViolationAlert = true; return }
 
-        let lat = locationManager.location?.coordinate.latitude  ?? 37.7749
-        let lng = locationManager.location?.coordinate.longitude ?? -122.4194
+            let lat = locationManager.location?.coordinate.latitude  ?? 37.7749
+            let lng = locationManager.location?.coordinate.longitude ?? -122.4194
 
-        let spot = Spot(
-            name: trimmedName,
-            latitude: lat,
-            longitude: lng,
-            obstacles: obstacles,
-            visibility: visibility,
-            bustStatus: bustStatus,
-            fameTier: fameTier,
-            bestTimeOfDay: bestTime
-        )
-        modelContext.insert(spot)
-        Task { try? await SupabaseService.shared.pushSpot(spot) }
-        dismiss()
+            let spot = Spot(
+                name: trimmedName,
+                latitude: lat,
+                longitude: lng,
+                obstacles: obstacles,
+                visibility: visibility,
+                bustStatus: bustStatus,
+                fameTier: fameTier,
+                bestTimeOfDay: bestTime
+            )
+            modelContext.insert(spot)
+            Task { try? await SupabaseService.shared.pushSpot(spot) }
+            dismiss()
+        }
     }
 }
