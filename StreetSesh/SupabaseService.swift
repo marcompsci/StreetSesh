@@ -442,4 +442,40 @@ final class SupabaseService {
             .execute()
             .value
     }
+
+    // MARK: - Activity Feed
+
+    func fetchCrewSessions(usernames: [String], since: Date, limit: Int) async throws -> [LiveSessionDTO] {
+        let sinceStr = ISO8601DateFormatter().string(from: since)
+        return try await client.from("live_sessions")
+            .select()
+            .in("username", values: usernames)
+            .gte("started_at", value: sinceStr)
+            .order("started_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+    }
+
+    func fetchCrewTrophies(usernames: [String], since: Date, limit: Int) async throws -> [TrophyDTO] {
+        let sinceStr = ISO8601DateFormatter().string(from: since)
+        return try await client.from("trophies")
+            .select()
+            .in("username", values: usernames)
+            .gte("earned_at", value: sinceStr)
+            .order("earned_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+    }
+
+    func fetchGlobalSessions(limit: Int) async throws -> [LiveSessionDTO] {
+        return try await client.from("live_sessions")
+            .select()
+            .eq("visibility_raw", value: "public")
+            .order("started_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+    }
 }

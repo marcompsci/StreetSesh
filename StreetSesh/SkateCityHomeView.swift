@@ -5,9 +5,16 @@ import CoreLocation
 struct SkateCityHomeView: View {
     @EnvironmentObject private var state: SkateCityAppState
     @Query private var allNotifications: [NotificationItem]
+    @Query private var allUsers: [AppUser]
+    @Query(sort: \LiveSession.startedAt,   order: .reverse) private var recentSessions: [LiveSession]
+    @Query(sort: \Trophy.earnedAt,         order: .reverse) private var recentTrophies: [Trophy]
+    @Query(sort: \SpotCheckIn.checkedInAt, order: .reverse) private var recentCheckIns: [SpotCheckIn]
+    @Query(sort: \Spot.submittedAt,        order: .reverse) private var recentSpots: [Spot]
+
     @State private var showCustomize     = false
     @State private var showSkateCity     = false
     @State private var showNotifications = false
+    @State private var showActivityFeed  = false
 
     private var unreadCount: Int { allNotifications.filter { !$0.isRead }.count }
     @State private var dailyChallenge: SkateChallenge = SKMockData.challenges[0]
@@ -70,6 +77,10 @@ struct SkateCityHomeView: View {
         }
         .sheet(isPresented: $showNotifications) {
             NotificationCenterView()
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showActivityFeed) {
+            ActivityFeedView()
                 .presentationBackground(Color.black)
         }
         #if os(iOS)
@@ -681,49 +692,85 @@ struct SkateCityHomeView: View {
         }
     }
 
-    // MARK: - Crew Activity
+    // MARK: - Crew Activity (live)
+
+    private var homeFeedItems: [FeedItem] {
+        let username = allUsers.first?.username ?? ""
+        guard !username.isEmpty else { return [] }
+        return FeedService.shared.buildMyFeed(
+            sessions: recentSessions,
+            trophies: recentTrophies,
+            checkIns: recentCheckIns,
+            spots: recentSpots,
+            username: username
+        )
+    }
 
     private var crewActivitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SKSectionHeader(title: "CREW ACTIVITY")
-            VStack(spacing: 10) {
-                ForEach(state.clips.prefix(3)) { clip in
-                    crewClipRow(clip)
+            HStack {
+                SKSectionHeader(title: "YOUR ACTIVITY")
+                Spacer()
+                Button { showActivityFeed = true } label: {
+                    HStack(spacing: 3) {
+                        Text("See All")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.skLime)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.skLime)
+                    }
+                }
+            }
+            if homeFeedItems.isEmpty {
+                HStack(spacing: 10) {
+                    Image(systemName: "bolt.fill")
+                        .foregroundStyle(.skSub)
+                    Text("Start a session to see your activity here.")
+                        .font(.caption)
+                        .foregroundStyle(.skSub)
+                }
+                .padding(.vertical, 4)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(homeFeedItems.prefix(3)) { item in
+                        homeFeedRow(item)
+                        if item.id != homeFeedItems.prefix(3).last?.id {
+                            Divider().background(Color.white.opacity(0.06)).padding(.leading, 50)
+                        }
+                    }
                 }
             }
         }
         .skCard()
     }
 
-    private func crewClipRow(_ clip: SkateClip) -> some View {
-        HStack(spacing: 12) {
+    private func homeFeedRow(_ item: FeedItem) -> some View {
+        let accent = Color(hex: item.kind.colorHex)
+        return HStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .fill(Color.skMuted)
-                    .frame(width: 38, height: 38)
-                Text(String(clip.creatorName.prefix(1)))
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.skLime)
+                    .fill(accent.opacity(0.15))
+                    .frame(width: 32, height: 32)
+                Image(systemName: item.kind.iconName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(accent)
             }
-            VStack(alignment: .leading, spacing: 3) {
-                Text(clip.creatorName)
-                    .font(.subheadline.weight(.semibold))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.headline)
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.skText)
-                Text(clip.challengeTitle)
+                Text(item.detail)
                     .font(.caption)
                     .foregroundStyle(.skSub)
                     .lineLimit(1)
             }
             Spacer()
-            VStack(alignment: .trailing, spacing: 3) {
-                Text("\(clip.score)")
-                    .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(.skLime)
-                Text(clip.createdAt.skRelative)
-                    .font(.caption2)
-                    .foregroundStyle(.skSub)
-            }
+            Text(item.happenedAt.skRelative)
+                .font(.system(size: 10))
+                .foregroundStyle(.skSub)
         }
+        .padding(.vertical, 8)
     }
 }
 
