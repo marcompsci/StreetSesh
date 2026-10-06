@@ -434,6 +434,7 @@ struct SKCommentSheet: View {
                             .foregroundStyle(.skText)
                             .submitLabel(.send)
                             .onSubmit { postComment() }
+                            .onChange(of: newComment) { _, v in if v.count > 500 { newComment = String(v.prefix(500)) } }
 
                         Button { postComment() } label: {
                             Image(systemName: "arrow.up.circle.fill")
@@ -538,6 +539,7 @@ struct SKCreateSessionSheet: View {
                         formField("SESSION NAME") {
                             TextField("e.g. Saturday Mission Sesh", text: $title)
                                 .foregroundStyle(.skText)
+                                .onChange(of: title) { _, v in if v.count > 60 { title = String(v.prefix(60)) } }
                         }
                         formField("NEIGHBORHOOD") {
                             TextField("Where are you skating?", text: $neighborhood)

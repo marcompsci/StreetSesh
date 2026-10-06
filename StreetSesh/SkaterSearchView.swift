@@ -201,6 +201,8 @@ struct SkaterSearchView: View {
         hasSearched = false
         Task {
             defer { isSearching = false; hasSearched = true }
+            // Rate-limit: 1 search per second
+            guard await RateLimiter.shared.allow(endpoint: .userSearch) else { return }
             results = (try? await SupabaseService.shared.searchUsers(query: q)) ?? []
         }
     }

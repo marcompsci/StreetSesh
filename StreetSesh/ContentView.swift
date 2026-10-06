@@ -6,16 +6,19 @@ struct ContentView: View {
     @Query private var users: [AppUser]
 
     @State private var moderationStatus: ModerationStatus = .clear
+    @State private var securityGateReason: AppSecurityGateView.Reason? = nil
 
     private var currentUser: AppUser? { users.first }
 
     var body: some View {
         Group {
-            if users.isEmpty {
+            if let reason = securityGateReason {
+                // Terminal security screen — no bypass
+                AppSecurityGateView(reason: reason)
+            } else if users.isEmpty {
                 OnboardingView()
             } else if moderationStatus.isBanned || moderationStatus.isSuspended {
                 SuspendedView(status: moderationStatus) {
-                    // Sign out: delete local user so onboarding is shown
                     if let user = currentUser { modelContext.delete(user) }
                     try? modelContext.save()
                 }
@@ -24,6 +27,20 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            // Device integrity check — runs synchronously before anything else
+            if SecurityService.shared.isDeviceCompromised() {
+                securityGateReason = .jailbreak
+                return
+            }
+            if SecurityService.shared.isScreenBeingRecorded() {
+                securityGateReason = .screenRecording
+            }
+
+            // Watch for screen recording starting mid-session
+            SecurityService.shared.observeScreenCapture { isCapturing in
+                securityGateReason = isCapturing ? .screenRecording : nil
+            }
+
             SampleData.seed(into: modelContext)
             SampleData.seedFresnoSpots(into: modelContext)
             SampleData.seedHuntScores(into: modelContext)
@@ -32,13 +49,13 @@ struct ContentView: View {
             SampleData.seedBustVotes(into: modelContext)
         }
         .task {
-            // Request push notification permission once user is onboarded
+            guard securityGateReason == nil else { return }
+
             if currentUser != nil {
                 await NotificationService.shared.requestPermission()
                 NotificationService.shared.scheduleDailyChallenge()
             }
 
-            // Check moderation status for existing user
             if let user = currentUser {
                 let status = await ModerationService.shared.fetchModerationStatus(username: user.username)
                 moderationStatus = status

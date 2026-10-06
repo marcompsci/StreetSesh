@@ -94,11 +94,13 @@ struct SpotSubmitView: View {
         Form {
             Section("SPOT NAME") {
                 TextField("e.g. Pier 7, Wallenberg…", text: $name)
+                    .onChange(of: name) { _, v in if v.count > 100 { name = String(v.prefix(100)) } }
             }
 
             Section("OBSTACLES") {
                 HStack {
                     TextField("Add obstacle…", text: $obstacleInput)
+                        .onChange(of: obstacleInput) { _, v in if v.count > 60 { obstacleInput = String(v.prefix(60)) } }
                     Button("Add") {
                         let trimmed = obstacleInput.trimmingCharacters(in: .whitespaces)
                         guard !trimmed.isEmpty else { return }

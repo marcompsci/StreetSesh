@@ -181,23 +181,33 @@ final class ModerationService {
     }
 
     // MARK: - Scan and auto-action any submitted text
-    // Call this whenever a user submits a post, comment, or bio.
+    // Call this wherever a user submits text (post, comment, bio, spot name).
     // Returns false if the content was blocked.
     func validateAndSubmit(text: String, username: String) async -> Bool {
-        guard let violation = ContentFilter.scan(text) else { return true }
+        // Rate-limit: max one content scan per 0.5 s
+        guard await RateLimiter.shared.allow(endpoint: .contentScan) else { return true }
 
-        // Auto-suspend for high severity; flag for review on medium/low
+        // Enforce max input length (10 000 chars — well past any legitimate use)
+        let truncated = String(text.prefix(10_000))
+        guard let violation = ContentFilter.scan(truncated) else { return true }
+
         let reason = "Prohibited content detected: \(violation.trigger)"
         await autoSuspend(username: username, reason: reason, flaggedContent: violation.originalText)
         return false
     }
 
-    // MARK: - Fetch public IP
+    // MARK: - Fetch public IP (rate-limited to once per 30 s)
     func fetchPublicIP() async -> String? {
+        // Return cached Keychain value if still fresh
+        if let cached = KeychainService.shared.get(.ipBanCache) { return cached }
+
+        guard await RateLimiter.shared.allow(endpoint: .ipFetch) else { return nil }
         guard let url = URL(string: "https://api64.ipify.org?format=json") else { return nil }
         guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
         struct IPResponse: Decodable { let ip: String }
-        return (try? JSONDecoder().decode(IPResponse.self, from: data))?.ip
+        guard let ip = (try? JSONDecoder().decode(IPResponse.self, from: data))?.ip else { return nil }
+        KeychainService.shared.set(ip, for: .ipBanCache)
+        return ip
     }
 
     // MARK: - Permanent ban (called by admin / server action result)
