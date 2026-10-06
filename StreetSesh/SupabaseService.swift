@@ -231,6 +231,16 @@ struct SpotClipDTO: Codable {
     }
 }
 
+struct LeaderboardEntryDTO: Codable {
+    var username: String
+    var city: String
+    var sessionCount: Int
+    enum CodingKeys: String, CodingKey {
+        case username, city
+        case sessionCount = "session_count"
+    }
+}
+
 struct BustVoteDTO: Codable {
     var spotName: String
     var voteRaw: String
@@ -408,5 +418,28 @@ final class SupabaseService {
         try await client.from("trophies")
             .upsert(TrophyDTO(from: trophy), onConflict: "key,username")
             .execute()
+    }
+
+    // MARK: - Leaderboard
+
+    func fetchSessionsLeaderboard(
+        city: String? = nil,
+        usernames: [String]? = nil,
+        limit: Int = 50
+    ) async throws -> [LeaderboardEntryDTO] {
+        var query = client
+            .from("app_users")
+            .select("username, city, session_count")
+        if let city, !city.isEmpty {
+            query = query.eq("city", value: city)
+        }
+        if let usernames, !usernames.isEmpty {
+            query = query.in("username", values: usernames)
+        }
+        return try await query
+            .order("session_count", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
     }
 }

@@ -48,6 +48,7 @@ enum RateLimitedEndpoint: String {
     case commentPost       = "comment_post"
     case sessionStart      = "session_start"
     case ipFetch           = "ip_fetch"
+    case leaderboard       = "leaderboard"
 
     /// Minimum seconds between allowed calls
     var minimumInterval: TimeInterval {
@@ -60,6 +61,7 @@ enum RateLimitedEndpoint: String {
         case .commentPost:      return 1.0
         case .sessionStart:     return 10.0
         case .ipFetch:          return 30.0
+        case .leaderboard:      return 2.0
         }
     }
 }

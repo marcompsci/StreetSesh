@@ -1,16 +1,45 @@
 import SwiftUI
+import SwiftData
 
 // MARK: - Leaderboard Root
 
 struct LeaderboardView: View {
     @EnvironmentObject private var appState: SkateCityAppState
+    @Query private var users: [AppUser]
+    @Query private var crews: [Crew]
+    @Query(sort: \HuntScore.totalPoints, order: .reverse) private var huntScores: [HuntScore]
+
     @State private var selectedCategory: SKLeaderboardCategory = .sessionKings
     @State private var selectedYear:     SKLeaderboardYear     = .y2026
     @State private var showGameOfSkate                         = false
+    @State private var scope:       BoardScope                 = .global
+    @State private var liveEntries: [SKLeaderboardEntry]?      = nil
+    @State private var isLoading                               = false
+
+    enum BoardScope: String, CaseIterable {
+        case global = "Global"
+        case city   = "My City"
+        case crew   = "Crew"
+    }
+
+    private var currentUser: AppUser? { users.first }
+    private var myCrew: Crew? {
+        guard let u = currentUser else { return nil }
+        return crews.first { $0.ownerUsername == u.username || $0.memberList.contains(u.username) }
+    }
+    private var crewMembers: [String] {
+        guard let crew = myCrew else { return [] }
+        return (crew.memberList + [crew.ownerUsername]).filter { !$0.isEmpty }
+    }
+    private let entryColors = [
+        "#CCFF40","#3AB5E6","#FF5A35","#C77DFF","#FFD700",
+        "#FF5A35","#3AB5E6","#CCFF40","#CCFF40","#C77DFF"
+    ]
 
     private var entries: [SKLeaderboardEntry] {
-        SKMockData.leaderboardEntries(for: selectedCategory, year: selectedYear)
+        liveEntries ?? SKMockData.leaderboardEntries(for: selectedCategory, year: selectedYear)
     }
+    private var isShowingLiveData: Bool { liveEntries != nil }
 
     var body: some View {
         NavigationStack {
@@ -27,6 +56,10 @@ struct LeaderboardView: View {
                             .padding(.bottom, 16)
 
                         yearFilter
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 10)
+
+                        scopePicker
                             .padding(.horizontal, 16)
                             .padding(.bottom, 10)
 
@@ -50,6 +83,10 @@ struct LeaderboardView: View {
                 .environmentObject(appState)
         }
         #endif
+        .task { await loadLiveData() }
+        .onChange(of: selectedCategory) { _, _ in liveEntries = nil; Task { await loadLiveData() } }
+        .onChange(of: selectedYear)     { _, _ in liveEntries = nil; Task { await loadLiveData() } }
+        .onChange(of: scope)            { _, _ in liveEntries = nil; Task { await loadLiveData() } }
     }
 
     // MARK: - Game of S.K.A.T.E Banner
@@ -172,15 +209,135 @@ struct LeaderboardView: View {
         }
     }
 
+    // MARK: - Scope Picker
+
+    private var scopePicker: some View {
+        HStack(spacing: 6) {
+            ForEach(BoardScope.allCases, id: \.self) { s in
+                Button { withAnimation(.easeInOut(duration: 0.15)) { scope = s } } label: {
+                    Text(s.rawValue)
+                        .font(.system(size: 11, weight: .black))
+                        .tracking(0.3)
+                        .foregroundStyle(scope == s ? .black : .skText)
+                        .padding(.horizontal, 14).padding(.vertical, 7)
+                        .frame(maxWidth: .infinity)
+                        .background(scope == s ? Color.orange : Color.skMuted)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
     // MARK: - Rankings
 
     private var rankingsList: some View {
-        VStack(spacing: 7) {
-            ForEach(entries) { entry in
-                LeaderboardRow(entry: entry,
-                               metricLabel: selectedCategory.metricLabel,
-                               accentHex: selectedCategory.accentHex)
+        Group {
+            if isLoading {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .tint(Color(hex: selectedCategory.accentHex))
+                    Spacer()
+                }
+                .frame(height: 120)
+            } else {
+                VStack(spacing: 7) {
+                    if isShowingLiveData {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 5, height: 5)
+                            Text("LIVE DATA")
+                                .font(.system(size: 9, weight: .black))
+                                .tracking(0.8)
+                                .foregroundStyle(Color.green.opacity(0.8))
+                            Spacer()
+                        }
+                        .padding(.bottom, 4)
+                    }
+                    ForEach(entries) { entry in
+                        LeaderboardRow(entry: entry,
+                                       metricLabel: selectedCategory.metricLabel,
+                                       accentHex: selectedCategory.accentHex)
+                    }
+                }
             }
+        }
+    }
+
+    // MARK: - Live Data Loading
+
+    private func loadLiveData() async {
+        guard await RateLimiter.shared.allow(endpoint: .leaderboard) else { return }
+        let username = currentUser?.username ?? ""
+        switch selectedCategory {
+        case .sessionKings:
+            await loadSessionKings(currentUsername: username)
+        case .quizMasters:
+            loadQuizMasters(currentUsername: username)
+        default:
+            liveEntries = nil
+        }
+    }
+
+    private func loadSessionKings(currentUsername: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let dtos: [LeaderboardEntryDTO]
+            switch scope {
+            case .global:
+                dtos = try await SupabaseService.shared.fetchSessionsLeaderboard(limit: 50)
+            case .city:
+                let city = currentUser?.city ?? ""
+                dtos = try await SupabaseService.shared.fetchSessionsLeaderboard(city: city, limit: 50)
+            case .crew:
+                let members = crewMembers
+                guard !members.isEmpty else { liveEntries = []; return }
+                dtos = try await SupabaseService.shared.fetchSessionsLeaderboard(usernames: members, limit: 50)
+            }
+            guard !dtos.isEmpty else { liveEntries = nil; return }
+            liveEntries = dtos.enumerated().map { i, dto in
+                SKLeaderboardEntry(
+                    id: UUID(), rank: i + 1,
+                    handle: "@\(dto.username)",
+                    city: dto.city,
+                    metricValue: dto.sessionCount,
+                    avatarInitial: String(dto.username.prefix(1)).uppercased(),
+                    avatarColorHex: entryColors[i % entryColors.count],
+                    isCurrentUser: dto.username == currentUsername
+                )
+            }
+        } catch {
+            liveEntries = nil  // fall back to mock on network error
+        }
+    }
+
+    private func loadQuizMasters(currentUsername: String) {
+        var best: [String: HuntScore] = [:]
+        for score in huntScores {
+            if (best[score.username]?.totalPoints ?? -1) < score.totalPoints {
+                best[score.username] = score
+            }
+        }
+        var filtered = Array(best.values)
+        if scope == .crew {
+            let members = Set(crewMembers)
+            filtered = filtered.filter { members.contains($0.username) }
+        }
+        filtered.sort { $0.totalPoints > $1.totalPoints }
+        guard !filtered.isEmpty else { liveEntries = nil; return }
+        liveEntries = filtered.prefix(50).enumerated().map { i, score in
+            SKLeaderboardEntry(
+                id: UUID(), rank: i + 1,
+                handle: "@\(score.username)",
+                city: "",
+                metricValue: score.totalPoints,
+                avatarInitial: String(score.username.prefix(1)).uppercased(),
+                avatarColorHex: entryColors[i % entryColors.count],
+                isCurrentUser: score.isCurrentUser || score.username == currentUsername
+            )
         }
     }
 }

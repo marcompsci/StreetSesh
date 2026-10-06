@@ -12,6 +12,7 @@ struct ProfileView: View {
     @State private var showTrophyCase    = false
     @State private var showCrew          = false
     @State private var showSkaterSearch  = false
+    @State private var showLeaderboard   = false
 
     var currentUser: AppUser? { users.first }
 
@@ -62,6 +63,7 @@ struct ProfileView: View {
                         }
                         crewSection
                         findSkatersButton
+                        leaderboardButton
                         if !myTrophies.isEmpty {
                             trophyPreview
                         }
@@ -99,6 +101,10 @@ struct ProfileView: View {
         .sheet(isPresented: $showSkaterSearch) {
             SkaterSearchView()
                 .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showLeaderboard) {
+            LeaderboardView()
+                .presentationBackground(Color.skDark)
         }
     }
 
@@ -310,6 +316,36 @@ struct ProfileView: View {
             .background(Color.white.opacity(0.06))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.orange.opacity(0.2), lineWidth: 1))
+        }
+    }
+
+    // MARK: - Leaderboard
+
+    private var leaderboardButton: some View {
+        Button { showLeaderboard = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(hex: "#FFD700").opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color(hex: "#FFD700"))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Leaderboard")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text("See where you rank among all skaters.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#FFD700").opacity(0.2), lineWidth: 1))
         }
     }
 
