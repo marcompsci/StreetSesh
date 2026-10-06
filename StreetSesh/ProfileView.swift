@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State private var showCrew          = false
     @State private var showSkaterSearch  = false
     @State private var showLeaderboard   = false
+    @State private var showStats         = false
 
     var currentUser: AppUser? { users.first }
 
@@ -63,6 +64,7 @@ struct ProfileView: View {
                         }
                         crewSection
                         findSkatersButton
+                        statsButton
                         leaderboardButton
                         if !myTrophies.isEmpty {
                             trophyPreview
@@ -105,6 +107,10 @@ struct ProfileView: View {
         .sheet(isPresented: $showLeaderboard) {
             LeaderboardView()
                 .presentationBackground(Color.skDark)
+        }
+        .sheet(isPresented: $showStats) {
+            StatsView()
+                .presentationBackground(Color.black)
         }
     }
 
@@ -346,6 +352,36 @@ struct ProfileView: View {
             .background(Color.white.opacity(0.06))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#FFD700").opacity(0.2), lineWidth: 1))
+        }
+    }
+
+    // MARK: - Stats Dashboard
+
+    private var statsButton: some View {
+        Button { showStats = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(hex: "#3AB5E6").opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "chart.bar.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color(hex: "#3AB5E6"))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("My Stats")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text("Charts, milestones, and your session history.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#3AB5E6").opacity(0.2), lineWidth: 1))
         }
     }
 
