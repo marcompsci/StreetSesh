@@ -54,6 +54,8 @@ struct ContentView: View {
             if currentUser != nil {
                 await NotificationService.shared.requestPermission()
                 NotificationService.shared.scheduleDailyChallenge()
+                NotificationService.shared.scheduleStreakReminder()
+                NotificationService.shared.scheduleWeeklySummary()
             }
 
             if let user = currentUser {

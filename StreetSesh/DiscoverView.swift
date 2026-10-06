@@ -11,6 +11,7 @@ struct DiscoverView: View {
     @Query(sort: \SpotBookmark.addedAt, order: .reverse) private var bookmarks: [SpotBookmark]
 
     @State private var tab: DiscoverTab = .forYou
+    @State private var selectedSpot: Spot? = nil
 
     enum DiscoverTab: String, CaseIterable {
         case forYou     = "For You"
@@ -92,7 +93,23 @@ struct DiscoverView: View {
                     }
                 }
             }
+            .sheet(item: $selectedSpot) { spot in
+                SpotDetailSheet(spot: spot)
+                    .presentationBackground(Color.black)
+            }
+            .task { checkHotBookmarks() }
         }
+    }
+
+    // MARK: - Hot Bookmark Notifications
+
+    private func checkHotBookmarks() {
+        let bookmarkNames = Set(bookmarks.map { $0.spotName })
+        let notifier = AppEventNotifier(context: modelContext)
+        recommendations
+            .filter { $0.hasActiveSession && bookmarkNames.contains($0.spot.name) }
+            .prefix(3)
+            .forEach { notifier.bookmarkedSpotLive(spotName: $0.spot.name) }
     }
 
     // MARK: - Tab Picker
@@ -213,6 +230,8 @@ struct DiscoverView: View {
         .padding(.horizontal, 14)
         .background(Color.white.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .contentShape(RoundedRectangle(cornerRadius: 12))
+        .onTapGesture { selectedSpot = scored.spot }
     }
 
     // MARK: - Bucket List

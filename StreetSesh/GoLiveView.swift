@@ -185,6 +185,12 @@ struct GoLiveView: View {
             )
         }
 
+        // Streak milestone notifications (3 / 7 / 14 / 30 days)
+        let streakDays = currentStreak(username: user.username, checkIns: allCheckIns + [checkIn])
+        if [3, 7, 14, 30].contains(streakDays) {
+            AppEventNotifier(context: modelContext).streakMilestone(days: streakDays)
+        }
+
         // In-app notification for the new session
         let sessionNotif = NotificationItem(
             kind: "session",
@@ -204,6 +210,19 @@ struct GoLiveView: View {
         }
 
         dismiss()
+    }
+
+    private func currentStreak(username: String, checkIns: [SpotCheckIn]) -> Int {
+        let cal = Calendar.current
+        let days = Set(checkIns.filter { $0.username == username }.map { cal.startOfDay(for: $0.checkedInAt) })
+        let today = cal.startOfDay(for: Date())
+        var streak = 0
+        var check = today
+        while days.contains(check) {
+            streak += 1
+            check = cal.date(byAdding: .day, value: -1, to: check)!
+        }
+        return streak
     }
 }
 
