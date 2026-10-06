@@ -272,6 +272,17 @@ final class SupabaseService {
             .execute()
     }
 
+    func searchUsers(query: String) async throws -> [AppUserDTO] {
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        return try await client
+            .from("app_users")
+            .select()
+            .ilike("username", value: "\(query.lowercased())%")
+            .limit(25)
+            .execute()
+            .value
+    }
+
     // MARK: - Spots
 
     func syncSpots(into context: ModelContext) async throws {

@@ -8,9 +8,10 @@ struct ProfileView: View {
     @Query private var trophies: [Trophy]
     @Query private var crews: [Crew]
 
-    @State private var showEditProfile = false
-    @State private var showTrophyCase = false
-    @State private var showCrew = false
+    @State private var showEditProfile   = false
+    @State private var showTrophyCase    = false
+    @State private var showCrew          = false
+    @State private var showSkaterSearch  = false
 
     var currentUser: AppUser? { users.first }
 
@@ -60,6 +61,7 @@ struct ProfileView: View {
                             activeSessionCard(session)
                         }
                         crewSection
+                        findSkatersButton
                         if !myTrophies.isEmpty {
                             trophyPreview
                         }
@@ -92,6 +94,10 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showCrew) {
             CrewView()
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showSkaterSearch) {
+            SkaterSearchView()
                 .presentationBackground(Color.black)
         }
     }
@@ -281,6 +287,32 @@ struct ProfileView: View {
         }
     }
 
+    // MARK: - Find Skaters
+
+    private var findSkatersButton: some View {
+        Button { showSkaterSearch = true } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "person.2.wave.2.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(.orange.opacity(0.8))
+                    .frame(width: 44)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Find Skaters")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text("Search for skaters to add to your crew.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.orange.opacity(0.2), lineWidth: 1))
+        }
+    }
+
     // MARK: - About
 
     private var aboutSection: some View {
@@ -289,8 +321,6 @@ struct ProfileView: View {
             Text("StreetSesh").font(.headline).foregroundStyle(.white)
             Text("The spot app skaters actually trust.")
                 .font(.subheadline).foregroundStyle(.secondary)
-            Text("Phase 3 — Crews, trophies, locals.")
-                .font(.caption).foregroundStyle(Color.secondary.opacity(0.5))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()

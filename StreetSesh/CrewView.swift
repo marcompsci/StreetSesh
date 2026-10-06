@@ -7,10 +7,11 @@ struct CrewView: View {
     @Query private var crews: [Crew]
     @Query private var users: [AppUser]
 
-    @State private var crewName = ""
-    @State private var crewTag = ""
-    @State private var newMemberName = ""
-    @State private var showAddMember = false
+    @State private var crewName        = ""
+    @State private var crewTag         = ""
+    @State private var newMemberName   = ""
+    @State private var showAddMember   = false
+    @State private var showSkaterSearch = false
 
     var currentUser: AppUser? { users.first }
     var myCrew: Crew? {
@@ -43,6 +44,10 @@ struct CrewView: View {
                 Button("Cancel", role: .cancel) { newMemberName = "" }
             } message: {
                 Text("Enter the username of the person to add.")
+            }
+            .sheet(isPresented: $showSkaterSearch) {
+                SkaterSearchView()
+                    .presentationBackground(Color.black)
             }
         }
     }
@@ -150,13 +155,20 @@ struct CrewView: View {
                             .font(.system(size: 10, weight: .black))
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button {
-                            newMemberName = ""
-                            showAddMember = true
-                        } label: {
-                            Label("Add", systemImage: "plus")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.orange)
+                        HStack(spacing: 12) {
+                            Button { showSkaterSearch = true } label: {
+                                Label("Find", systemImage: "magnifyingglass")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.orange)
+                            }
+                            Button {
+                                newMemberName = ""
+                                showAddMember = true
+                            } label: {
+                                Label("Add", systemImage: "plus")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.orange)
+                            }
                         }
                     }
 
