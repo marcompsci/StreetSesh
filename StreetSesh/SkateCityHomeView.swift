@@ -10,12 +10,14 @@ struct SkateCityHomeView: View {
     @Query(sort: \Trophy.earnedAt,         order: .reverse) private var recentTrophies: [Trophy]
     @Query(sort: \SpotCheckIn.checkedInAt, order: .reverse) private var recentCheckIns: [SpotCheckIn]
     @Query(sort: \Spot.submittedAt,        order: .reverse) private var recentSpots: [Spot]
+    @Query(sort: \SpotClip.addedAt,        order: .reverse) private var recentClips: [SpotClip]
 
     @State private var showCustomize     = false
     @State private var showSkateCity     = false
     @State private var showNotifications = false
     @State private var showActivityFeed  = false
     @State private var showDiscover      = false
+    @State private var showClipFeed      = false
 
     private var unreadCount: Int { allNotifications.filter { !$0.isRead }.count }
     @State private var dailyChallenge: SkateChallenge = SKMockData.challenges[0]
@@ -58,6 +60,7 @@ struct SkateCityHomeView: View {
                         knowTheSpotCard
                         dailyChallengeCard
                         discoverBanner
+                        clipsBanner
                         nearbySection
                         crewActivitySection
                         Spacer(minLength: 40)
@@ -87,6 +90,10 @@ struct SkateCityHomeView: View {
         }
         .sheet(isPresented: $showDiscover) {
             DiscoverView()
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showClipFeed) {
+            ClipFeedView()
                 .presentationBackground(Color.black)
         }
         #if os(iOS)
@@ -687,6 +694,48 @@ struct SkateCityHomeView: View {
             .background(Color.white.opacity(0.06))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#CCFF40").opacity(0.18), lineWidth: 1))
+        }
+    }
+
+    // MARK: - Clip Feed Banner
+
+    private var clipsBanner: some View {
+        let count = recentClips.count
+        return Button { showClipFeed = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(hex: "#FF3B30").opacity(0.12))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "play.rectangle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color(hex: "#FF3B30"))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text("Clip Feed")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                        if count > 0 {
+                            Text("\(count) clip\(count == 1 ? "" : "s")")
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 5).padding(.vertical, 2)
+                                .background(Color(hex: "#FF3B30"))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    Text("Spot clips from your local scene")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#FF3B30").opacity(0.18), lineWidth: 1))
         }
     }
 
