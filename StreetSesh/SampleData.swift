@@ -214,4 +214,25 @@ struct SampleData {
 
         try? context.save()
     }
+
+    static func seedFollows(into context: ModelContext) {
+        let descriptor = FetchDescriptor<FollowRelation>()
+        let count = (try? context.fetchCount(descriptor)) ?? 0
+        guard count == 0 else { return }
+
+        // grindset_99 and skate_rat_sf mutually follow each other;
+        // olliemaster follows both but neither follows back yet
+        let relations: [(String, String)] = [
+            ("grindset_99",  "skate_rat_sf"),
+            ("skate_rat_sf", "grindset_99"),
+            ("olliemaster",  "grindset_99"),
+            ("olliemaster",  "skate_rat_sf"),
+        ]
+
+        for (follower, following) in relations {
+            context.insert(FollowRelation(follower: follower, following: following))
+        }
+
+        try? context.save()
+    }
 }

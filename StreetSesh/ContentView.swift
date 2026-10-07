@@ -47,6 +47,7 @@ struct ContentView: View {
             SampleData.seedCheckIns(into: modelContext)
             SampleData.seedClips(into: modelContext)
             SampleData.seedBustVotes(into: modelContext)
+            SampleData.seedFollows(into: modelContext)
         }
         .task {
             guard securityGateReason == nil else { return }

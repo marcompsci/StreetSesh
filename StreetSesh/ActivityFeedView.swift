@@ -10,14 +10,17 @@ struct ActivityFeedView: View {
     @Query(sort: \SpotCheckIn.checkedInAt, order: .reverse) private var checkIns: [SpotCheckIn]
     @Query(sort: \Spot.submittedAt,      order: .reverse)   private var spots: [Spot]
 
+    @Query private var follows: [FollowRelation]
+
     @State private var scope: FeedScope = .mine
     @State private var remoteFeed: [FeedItem] = []
     @State private var isLoading = false
 
     enum FeedScope: String, CaseIterable {
-        case mine   = "Mine"
-        case crew   = "Crew"
-        case global = "Global"
+        case mine      = "Mine"
+        case following = "Following"
+        case crew      = "Crew"
+        case global    = "Global"
     }
 
     private var currentUser: AppUser? { users.first }
@@ -28,6 +31,10 @@ struct ActivityFeedView: View {
     private var crewMembers: [String] {
         guard let crew = myCrew else { return [] }
         return (crew.memberList + [crew.ownerUsername]).filter { !$0.isEmpty }
+    }
+    private var followingUsernames: [String] {
+        guard let u = currentUser else { return [] }
+        return FollowEngine.followingUsernames(for: u.username, in: follows)
     }
 
     private var myFeedItems: [FeedItem] {
@@ -230,9 +237,10 @@ struct ActivityFeedView: View {
 
     private var emptyIcon: String {
         switch scope {
-        case .mine:   return "skateboard"
-        case .crew:   return "person.3"
-        case .global: return "globe"
+        case .mine:      return "skateboard"
+        case .following: return "person.badge.plus"
+        case .crew:      return "person.3"
+        case .global:    return "globe"
         }
     }
 
@@ -240,6 +248,10 @@ struct ActivityFeedView: View {
         switch scope {
         case .mine:
             return "Nothing yet.\nStart a session or discover a new spot."
+        case .following:
+            return followingUsernames.isEmpty
+                ? "Follow skaters to see their activity here."
+                : "No recent activity from people you follow."
         case .crew:
             return crewMembers.isEmpty
                 ? "Create a crew to see what your skaters are up to."
@@ -264,10 +276,17 @@ struct ActivityFeedView: View {
 
         do {
             switch scope {
+            case .following:
+                let targets = followingUsernames
+                guard !targets.isEmpty else { remoteFeed = []; return }
+                async let sessTask  = SupabaseService.shared.fetchCrewSessions(usernames: targets, since: since, limit: 100)
+                async let trophTask = SupabaseService.shared.fetchCrewTrophies(usernames: targets, since: since, limit: 100)
+                let (sess, troph) = try await (sessTask, trophTask)
+                remoteFeed = FeedService.shared.buildRemoteFeed(sessions: sess, trophies: troph, currentUsername: username)
             case .crew:
                 let members = crewMembers
                 guard !members.isEmpty else { remoteFeed = []; return }
-                async let sessTask = SupabaseService.shared.fetchCrewSessions(usernames: members, since: since, limit: 100)
+                async let sessTask  = SupabaseService.shared.fetchCrewSessions(usernames: members, since: since, limit: 100)
                 async let trophTask = SupabaseService.shared.fetchCrewTrophies(usernames: members, since: since, limit: 100)
                 let (sess, troph) = try await (sessTask, trophTask)
                 remoteFeed = FeedService.shared.buildRemoteFeed(sessions: sess, trophies: troph, currentUsername: username)

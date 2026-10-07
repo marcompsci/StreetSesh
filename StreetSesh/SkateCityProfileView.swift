@@ -1,9 +1,25 @@
 import SwiftUI
+import SwiftData
 
 struct SkateCityProfileView: View {
     @EnvironmentObject private var state: SkateCityAppState
-    @State private var showSettings   = false
-    @State private var showCustomize  = false
+    @Query private var users:   [AppUser]
+    @Query private var follows: [FollowRelation]
+
+    @State private var showSettings      = false
+    @State private var showCustomize     = false
+    @State private var showFollowers     = false
+    @State private var followersInitTab  = FollowersView.Tab.followers
+
+    private var currentUsername: String { users.first?.username ?? state.profile.displayName }
+
+    private var followerCount: Int {
+        FollowEngine.followerUsernames(for: currentUsername, in: follows).count
+    }
+
+    private var followingCount: Int {
+        FollowEngine.followingUsernames(for: currentUsername, in: follows).count
+    }
 
     private let badges: [SKProfileBadge] = [
         SKProfileBadge(id: "first",    name: "First Sesh",     icon: "flag.fill",       hex: "#CCFF40"),
@@ -22,6 +38,7 @@ struct SkateCityProfileView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         profileHero
                         statsRow
+                        followStatsRow
                         badgesSection
                         settingsSection
                         Spacer(minLength: 40)
@@ -45,6 +62,10 @@ struct SkateCityProfileView: View {
                 .environmentObject(state)
                 .presentationDetents([.large])
                 .presentationBackground(Color.skDark)
+        }
+        .sheet(isPresented: $showFollowers) {
+            FollowersView(username: currentUsername, initialTab: followersInitTab)
+                .presentationBackground(Color.black)
         }
     }
 
@@ -103,6 +124,43 @@ struct SkateCityProfileView: View {
             Text(value)
                 .font(.system(size: 20, weight: .black))
                 .foregroundStyle(.skText)
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.skSub)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Follow Stats
+
+    private var followStatsRow: some View {
+        HStack(spacing: 0) {
+            Button {
+                followersInitTab = .followers
+                showFollowers = true
+            } label: {
+                followStatCell(label: "Followers", value: "\(followerCount)")
+            }
+            .buttonStyle(.plain)
+
+            Divider().background(Color.skBorder).frame(height: 40)
+
+            Button {
+                followersInitTab = .following
+                showFollowers = true
+            } label: {
+                followStatCell(label: "Following", value: "\(followingCount)")
+            }
+            .buttonStyle(.plain)
+        }
+        .skBorderCard(padding: 14)
+    }
+
+    private func followStatCell(label: String, value: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 20, weight: .black))
+                .foregroundStyle(.skLime)
             Text(label)
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.skSub)
