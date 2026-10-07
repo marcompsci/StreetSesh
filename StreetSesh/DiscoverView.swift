@@ -8,10 +8,13 @@ struct DiscoverView: View {
     @Query private var sessions: [LiveSession]
     @Query(sort: \SpotCheckIn.checkedInAt, order: .reverse) private var checkIns: [SpotCheckIn]
     @Query private var users:    [AppUser]
-    @Query(sort: \SpotBookmark.addedAt, order: .reverse) private var bookmarks: [SpotBookmark]
+    @Query(sort: \SpotBookmark.addedAt,    order: .reverse) private var bookmarks:      [SpotBookmark]
+    @Query(sort: \SpotCondition.reportedAt, order: .reverse) private var allConditions: [SpotCondition]
 
     @State private var tab: DiscoverTab = .forYou
-    @State private var selectedSpot: Spot? = nil
+    @State private var selectedSpot: Spot?    = nil
+    @State private var conditionTargetSpot    = ""
+    @State private var showConditionSheet     = false
 
     enum DiscoverTab: String, CaseIterable {
         case forYou     = "For You"
@@ -95,6 +98,10 @@ struct DiscoverView: View {
             }
             .sheet(item: $selectedSpot) { spot in
                 SpotDetailSheet(spot: spot)
+                    .presentationBackground(Color.black)
+            }
+            .sheet(isPresented: $showConditionSheet) {
+                SpotConditionSheet(spotName: conditionTargetSpot)
                     .presentationBackground(Color.black)
             }
             .task { checkHotBookmarks() }
@@ -182,6 +189,7 @@ struct DiscoverView: View {
 
     private func spotRow(_ scored: ScoredSpot) -> some View {
         let spot = scored.spot
+        let cond = freshestCondition(for: spot.name)
         return HStack(spacing: 12) {
             Circle()
                 .fill(bustColor(spot.bustStatus))
@@ -215,15 +223,47 @@ struct DiscoverView: View {
                             .lineLimit(1)
                     }
                 }
+                // Condition chip
+                if let c = cond {
+                    HStack(spacing: 4) {
+                        Text(c.type.emoji).font(.system(size: 10))
+                        Text(c.type.label)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Color(hex: c.type.colorHex))
+                        Text("·").font(.caption2).foregroundStyle(.secondary)
+                        Text(c.reportedAt.skRelative)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
             Spacer()
 
-            Button { toggleBookmark(spot) } label: {
-                Image(systemName: scored.isBookmarked ? "bookmark.fill" : "bookmark")
-                    .font(.system(size: 16))
-                    .foregroundStyle(scored.isBookmarked ? Color.orange : Color.secondary)
-                    .animation(.spring(response: 0.3), value: scored.isBookmarked)
+            HStack(spacing: 10) {
+                // Condition signal button
+                Button {
+                    conditionTargetSpot = spot.name
+                    showConditionSheet  = true
+                } label: {
+                    Group {
+                        if let c = cond {
+                            Text(c.type.emoji).font(.system(size: 15))
+                        } else {
+                            Image(systemName: "antenna.radiowaves.left.and.right.slash")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Color.secondary.opacity(0.4))
+                        }
+                    }
+                }
+
+                // Bookmark button
+                Button { toggleBookmark(spot) } label: {
+                    Image(systemName: scored.isBookmarked ? "bookmark.fill" : "bookmark")
+                        .font(.system(size: 16))
+                        .foregroundStyle(scored.isBookmarked ? Color.orange : Color.secondary)
+                        .animation(.spring(response: 0.3), value: scored.isBookmarked)
+                }
             }
         }
         .padding(.vertical, 11)
@@ -340,5 +380,9 @@ struct DiscoverView: View {
             modelContext.insert(SpotBookmark(from: spot))
         }
         try? modelContext.save()
+    }
+
+    private func freshestCondition(for spotName: String) -> SpotCondition? {
+        allConditions.first { $0.spotName == spotName && !$0.isStale }
     }
 }

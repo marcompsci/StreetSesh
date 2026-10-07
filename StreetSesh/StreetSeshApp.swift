@@ -19,6 +19,7 @@ struct StreetSeshApp: App {
             SpotBookmark.self,
             FollowRelation.self,
             SessionNote.self,
+            SpotCondition.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
