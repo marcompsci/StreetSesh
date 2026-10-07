@@ -7,6 +7,8 @@ struct SkaterSearchView: View {
     @Query private var users: [AppUser]
     @Query private var crews: [Crew]
 
+    @Query private var follows: [FollowRelation]
+
     @State private var searchQuery    = ""
     @State private var results:       [AppUserDTO] = []
     @State private var isSearching    = false
@@ -14,6 +16,8 @@ struct SkaterSearchView: View {
     @State private var reportTarget:  String? = nil
     @State private var showReport     = false
     @State private var addedMembers:  Set<String> = []
+    @State private var profileTarget: AppUserDTO? = nil
+    @State private var showProfile    = false
 
     private var currentUser: AppUser? { users.first }
     private var myCrew: Crew? {
@@ -37,6 +41,12 @@ struct SkaterSearchView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }.foregroundStyle(.white)
+                }
+            }
+            .sheet(isPresented: $showProfile) {
+                if let target = profileTarget {
+                    SkaterProfileView(username: target.username, city: target.city, sessionCount: target.sessionCount)
+                        .presentationBackground(Color.black)
                 }
             }
             .confirmationDialog(
@@ -156,14 +166,37 @@ struct SkaterSearchView: View {
             Spacer()
 
             if !isSelf {
-                HStack(spacing: 10) {
+                let amFollowing = FollowEngine.isFollowing(
+                    follower: currentUser?.username ?? "",
+                    target: skater.username,
+                    in: follows
+                )
+                HStack(spacing: 8) {
+                    // Follow / Following
+                    Button {
+                        guard let me = currentUser else { return }
+                        if amFollowing {
+                            FollowEngine.unfollow(follower: me.username, target: skater.username, context: modelContext, existing: follows)
+                        } else {
+                            FollowEngine.follow(follower: me.username, target: skater.username, context: modelContext, existing: follows)
+                        }
+                    } label: {
+                        Text(amFollowing ? "Following" : "Follow")
+                            .font(.caption.weight(.black))
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(amFollowing ? Color.white.opacity(0.10) : Color.orange)
+                            .foregroundStyle(amFollowing ? .white : .black)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+
                     // Add to Crew
                     if myCrew != nil && !alreadyInCrew && !justAdded {
                         Button { addToCrew(skater.username) } label: {
                             Image(systemName: "person.badge.plus")
                                 .font(.system(size: 16))
                                 .foregroundStyle(.orange)
-                                .frame(width: 36, height: 36)
+                                .frame(width: 34, height: 34)
                                 .background(Color.orange.opacity(0.12))
                                 .clipShape(Circle())
                         }
@@ -181,7 +214,7 @@ struct SkaterSearchView: View {
                         Image(systemName: "flag")
                             .font(.system(size: 14))
                             .foregroundStyle(.secondary)
-                            .frame(width: 36, height: 36)
+                            .frame(width: 34, height: 34)
                             .background(Color.white.opacity(0.06))
                             .clipShape(Circle())
                     }
@@ -190,6 +223,13 @@ struct SkaterSearchView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if !isSelf {
+                profileTarget = skater
+                showProfile = true
+            }
+        }
     }
 
     // MARK: - Actions
