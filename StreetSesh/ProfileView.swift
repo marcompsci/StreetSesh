@@ -14,6 +14,7 @@ struct ProfileView: View {
     @State private var showSkaterSearch  = false
     @State private var showLeaderboard   = false
     @State private var showStats         = false
+    @State private var showJournal       = false
 
     var currentUser: AppUser? { users.first }
 
@@ -66,6 +67,7 @@ struct ProfileView: View {
                         findSkatersButton
                         statsButton
                         leaderboardButton
+                        journalButton
                         if !myTrophies.isEmpty {
                             trophyPreview
                         }
@@ -110,6 +112,10 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showStats) {
             StatsView()
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showJournal) {
+            SkateJournalView()
                 .presentationBackground(Color.black)
         }
     }
@@ -382,6 +388,36 @@ struct ProfileView: View {
             .background(Color.white.opacity(0.06))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#3AB5E6").opacity(0.2), lineWidth: 1))
+        }
+    }
+
+    // MARK: - Journal
+
+    private var journalButton: some View {
+        Button { showJournal = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.orange.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "book.closed.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.orange)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Skate Journal")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text("Log your sessions, moods, and tricks.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.orange.opacity(0.2), lineWidth: 1))
         }
     }
 

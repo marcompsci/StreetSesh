@@ -18,6 +18,7 @@ struct StreetSeshApp: App {
             NotificationItem.self,
             SpotBookmark.self,
             FollowRelation.self,
+            SessionNote.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
