@@ -16,6 +16,8 @@ struct ProfileView: View {
     @State private var showStats         = false
     @State private var showJournal       = false
     @State private var showTrickTracker  = false
+    @State private var showCoach         = false
+    @State private var showInsights      = false
 
     var currentUser: AppUser? { users.first }
 
@@ -70,6 +72,8 @@ struct ProfileView: View {
                         leaderboardButton
                         journalButton
                         trickTrackerButton
+                        coachButton
+                        insightsButton
                         if !myTrophies.isEmpty {
                             trophyPreview
                         }
@@ -122,6 +126,14 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showTrickTracker) {
             TrickTrackerView()
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showCoach) {
+            SkateCoachView()
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showInsights) {
+            SpotInsightsDashboardView()
                 .presentationBackground(Color.black)
         }
     }
@@ -454,6 +466,74 @@ struct ProfileView: View {
             .background(Color.white.opacity(0.06))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#C77DFF").opacity(0.2), lineWidth: 1))
+        }
+    }
+
+    // MARK: - Skate Coach
+
+    private var coachButton: some View {
+        Button { showCoach = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(hex: "#C77DFF").opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color(hex: "#C77DFF"))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text("Skate Coach")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                        Text("PRO")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(Color(hex: "#FFD700"))
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Color(hex: "#FFD700").opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                    Text("Personalized practice plans from your skate data.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#C77DFF").opacity(0.25), lineWidth: 1))
+        }
+    }
+
+    // MARK: - Spot Insights
+
+    private var insightsButton: some View {
+        Button { showInsights = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(hex: "#FF5A35").opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color(hex: "#FF5A35"))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Spot Insights")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text("Activity analytics and export for the spot network.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "#FF5A35").opacity(0.2), lineWidth: 1))
         }
     }
 

@@ -3,6 +3,10 @@ import SwiftData
 
 @main
 struct StreetSeshApp: App {
+    init() {
+        CrashReporter.shared.configure()
+    }
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Spot.self,

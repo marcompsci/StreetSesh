@@ -18,6 +18,7 @@ struct SkateCityHomeView: View {
     @State private var showActivityFeed  = false
     @State private var showDiscover      = false
     @State private var showClipFeed      = false
+    @State private var showARTour        = false
 
     private var unreadCount: Int { allNotifications.filter { !$0.isRead }.count }
     @State private var dailyChallenge: SkateChallenge = SKMockData.challenges[0]
@@ -54,6 +55,7 @@ struct SkateCityHomeView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 20) {
                         headerSection
+                        arHeroBanner
                         shopEntryBanner
                         skateCityComingSoonCard
                         levelCard
@@ -94,6 +96,10 @@ struct SkateCityHomeView: View {
         }
         .sheet(isPresented: $showClipFeed) {
             ClipFeedView()
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showARTour) {
+            ARSpotTourView()
                 .presentationBackground(Color.black)
         }
         #if os(iOS)
@@ -224,6 +230,77 @@ struct SkateCityHomeView: View {
             .padding(18)
         }
         .frame(height: 162)
+    }
+
+    // MARK: - AR Hero Banner
+
+    private var arHeroBanner: some View {
+        Button { showARTour = true } label: {
+            ZStack(alignment: .bottomLeading) {
+                // Dark purple gradient
+                LinearGradient(
+                    colors: [Color(hex: "#0A0820"), Color(hex: "#1D0A3A")],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                // AR perspective grid
+                Canvas { ctx, size in
+                    for i in 0..<9 {
+                        let x = size.width * CGFloat(i) / 8
+                        var line = Path()
+                        line.move(to: CGPoint(x: size.width / 2, y: 0))
+                        line.addLine(to: CGPoint(x: x, y: size.height))
+                        ctx.stroke(line, with: .color(Color(hex: "#C77DFF").opacity(0.07)), lineWidth: 1)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                // Purple glow
+                Circle()
+                    .fill(Color(hex: "#C77DFF").opacity(0.18))
+                    .frame(width: 140, height: 140)
+                    .blur(radius: 36)
+                    .offset(x: 200, y: 10)
+
+                // AR icon cluster (right side)
+                VStack(spacing: 6) {
+                    Image(systemName: "arkit")
+                        .font(.system(size: 36))
+                        .foregroundStyle(Color(hex: "#C77DFF").opacity(0.5))
+                    Text("AR")
+                        .font(.system(size: 11, weight: .black))
+                        .tracking(2)
+                        .foregroundStyle(Color(hex: "#C77DFF").opacity(0.4))
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.trailing, 24)
+
+                // Text
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arkit")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color(hex: "#C77DFF"))
+                        Text("AR SPOT TOUR")
+                            .font(.system(size: 10, weight: .black))
+                            .tracking(1.4)
+                            .foregroundStyle(Color(hex: "#C77DFF"))
+                    }
+                    Text("Preview spots\nbefore you go.")
+                        .font(.system(size: 22, weight: .black))
+                        .foregroundStyle(.white)
+                        .lineSpacing(2)
+                    Text("38 locations in augmented reality")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+                .padding(18)
+            }
+            .frame(height: 138)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Shop Entry Banner

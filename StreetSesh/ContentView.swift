@@ -52,6 +52,24 @@ struct ContentView: View {
         .task {
             guard securityGateReason == nil else { return }
 
+            // Wire analytics username so all event tracking is attributed
+            if let user = currentUser {
+                AnalyticsService.shared.currentUsername = user.username
+                CrashReporter.shared.setUser(username: user.username)
+                AnalyticsService.shared.track(.appOpen)
+            }
+
+            // Purge expired SpotCondition records (max expiry is 8 h)
+            let conditionCutoff = Date().addingTimeInterval(-8 * 3600)
+            if let stale = try? modelContext.fetch(
+                FetchDescriptor<SpotCondition>(
+                    predicate: #Predicate { $0.reportedAt < conditionCutoff }
+                )
+            ) {
+                stale.forEach { modelContext.delete($0) }
+                try? modelContext.save()
+            }
+
             if currentUser != nil {
                 await NotificationService.shared.requestPermission()
                 NotificationService.shared.scheduleDailyChallenge()
